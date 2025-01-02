@@ -10,7 +10,7 @@ import org.json.JSONObject;
 public class Config {
     private String apiKey;
     private String apiSecret;
-    private String portfolioName;
+    private String portfolioId;
     private List<String> coins;
 
     // New configurable conditions
@@ -28,8 +28,8 @@ public class Config {
         return apiSecret;
     }
 
-    public String getPortfolioName() {
-        return portfolioName;
+    public String getPortfolioId() {
+        return portfolioId;
     }
 
     public List<String> getCoins() {
@@ -59,7 +59,7 @@ public class Config {
         Config config = new Config();
         config.apiKey = json.getString("apiKey");
         config.apiSecret = json.getString("apiSecret");
-        config.portfolioName = json.getString("portfolioName");
+        config.portfolioId = json.getString("portfolioId");
         config.coins = json.getJSONArray("coins").toList().stream()
                 .map(Object::toString)
                 .collect(Collectors.toList());

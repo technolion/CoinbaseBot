@@ -19,6 +19,10 @@ public class CoinbaseBot {
         return client;
     }
 
+    public Config getConfig() {
+        return config;
+    }
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         String command;
@@ -83,9 +87,8 @@ public class CoinbaseBot {
             @Override
             public void run() {
                 try {
-                    double usdcBalance = 1000.0; // Replace this with balance retrieval logic
 
-                    TradingBot bot = new TradingBot(new CoinbaseBot(), usdcBalance, config);
+                    TradingBot bot = new TradingBot(new CoinbaseBot(), config);
                     List<String> coinsToTrade = config.getCoins();
 
                     for (String coin : coinsToTrade) {

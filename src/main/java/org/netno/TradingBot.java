@@ -21,7 +21,6 @@ public class TradingBot {
 
     private final OrdersService ordersService;
     private final MarketDataFetcher marketDataFetcher;
-    private final double usdcBalance;
 
     private final double purchaseDropPercent;
     private final double sellRisePercent;
@@ -30,10 +29,11 @@ public class TradingBot {
 
     private Map<String, TradeInfo> purchaseHistory;
 
-    public TradingBot(CoinbaseBot bot, double usdcBalance, Config config) {
+    public TradingBot(CoinbaseBot bot, Config config) {
         this.ordersService = CoinbaseAdvancedServiceFactory.createOrdersService(bot.getClient());
-        this.marketDataFetcher = new MarketDataFetcher(bot);
-        this.usdcBalance = usdcBalance;
+        this.marketDataFetcher = new MarketDataFetcher(bot, config.getPortfolioId());
+        double usdcBalance = marketDataFetcher.getUsdcBalance();
+        System.out.printf("Current cash: %s USDC.%n", usdcBalance);
 
         this.purchaseDropPercent = config.getPurchaseDropPercent();
         this.sellRisePercent = config.getSellRisePercent();
@@ -45,31 +45,34 @@ public class TradingBot {
 
     public void executeTrade(String coin) throws Exception {
         String tradingPair = coin + "-USDC";
-
+    
+        // Retrieve the current USDC balance before making a decision
+        double usdcBalance = marketDataFetcher.getUsdcBalance();
+    
         double priceChange = marketDataFetcher.get24hPriceChange(tradingPair);
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
-
+    
         if (purchaseHistory.containsKey(coin)) {
             TradeInfo tradeInfo = purchaseHistory.get(coin);
             LocalDateTime purchaseDate = tradeInfo.getPurchaseDate();
             double purchasePrice = tradeInfo.getPurchasePrice();
             double heldAmount = tradeInfo.getAmount();
-
+    
             boolean profitCondition = currentPrice >= purchasePrice * (1 + (sellRisePercent / 100.0));
             boolean timeCondition = ChronoUnit.HOURS.between(purchaseDate, LocalDateTime.now()) > sellAfterHours;
             boolean averageDownCondition = currentPrice <= purchasePrice * (1 + (averageDownDropPercent / 100.0));
-
+    
             if (profitCondition || timeCondition) {
                 sellCoin(coin, tradingPair, heldAmount);
                 return;
             }
-
+    
             // Average Down Logic
             if (averageDownCondition) {
                 double fundsToSpend = usdcBalance >= (heldAmount * currentPrice) ? (heldAmount * currentPrice) : usdcBalance * 0.5;
                 double additionalAmount = fundsToSpend / currentPrice;
                 buyCoin(coin, tradingPair, additionalAmount, currentPrice);
-
+    
                 // Update average purchase price
                 tradeInfo.updatePurchase(currentPrice, additionalAmount);
                 savePurchaseHistory(); // Persist changes
@@ -77,7 +80,9 @@ public class TradingBot {
             }
         } else {
             if (priceChange <= purchaseDropPercent) {
-                buyCoin(coin, tradingPair, usdcBalance * 0.2 / currentPrice, currentPrice);
+                double fundsToSpend = usdcBalance * 0.2;
+                double amountToBuy = fundsToSpend / currentPrice;
+                buyCoin(coin, tradingPair, amountToBuy, currentPrice);
             } else {
                 System.out.printf("No significant price drop for %s. Skipping.%n", coin);
             }
@@ -99,7 +104,7 @@ public class TradingBot {
 
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
-            System.out.printf("Bought %s: %s%n", coin, orderResponse.getOrderId());
+            System.out.printf("Bought %s of %s. Order id: %s%n", amount, coin, orderResponse.getOrderId());
             purchaseHistory.put(coin, new TradeInfo(currentPrice, amount, LocalDateTime.now()));
             savePurchaseHistory();
         } else {
