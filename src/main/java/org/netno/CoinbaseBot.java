@@ -42,8 +42,7 @@ public class CoinbaseBot {
                     System.exit(0);
                 case "help":
                     System.out.println("Available commands:");
-                    System.out.println("'unlock' - Load API credentials and unlock trading.");
-                    System.out.println("'starttrading' - Start automatic trading.");
+                    System.out.println("'st' - Start automatic trading.");
                     System.out.println("'exit' - Exit the program.");
                     break;
                 default:

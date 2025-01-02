@@ -26,6 +26,7 @@ public class TradingBot {
     private final double purchaseDropPercent;
     private final double sellRisePercent;
     private final int sellAfterHours;
+    private final double averageDownDropPercent;
 
     private Map<String, TradeInfo> purchaseHistory;
 
@@ -37,8 +38,8 @@ public class TradingBot {
         this.purchaseDropPercent = config.getPurchaseDropPercent();
         this.sellRisePercent = config.getSellRisePercent();
         this.sellAfterHours = config.getSellAfterHours();
+        this.averageDownDropPercent = config.getAverageDownDropPercent();
 
-        // Load purchase history from file
         this.purchaseHistory = loadPurchaseHistory();
     }
 
@@ -48,35 +49,45 @@ public class TradingBot {
         double priceChange = marketDataFetcher.get24hPriceChange(tradingPair);
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
 
-        // Check for selling conditions
         if (purchaseHistory.containsKey(coin)) {
             TradeInfo tradeInfo = purchaseHistory.get(coin);
             LocalDateTime purchaseDate = tradeInfo.getPurchaseDate();
             double purchasePrice = tradeInfo.getPurchasePrice();
+            double heldAmount = tradeInfo.getAmount();
 
             boolean profitCondition = currentPrice >= purchasePrice * (1 + (sellRisePercent / 100.0));
             boolean timeCondition = ChronoUnit.HOURS.between(purchaseDate, LocalDateTime.now()) > sellAfterHours;
+            boolean averageDownCondition = currentPrice <= purchasePrice * (1 + (averageDownDropPercent / 100.0));
 
             if (profitCondition || timeCondition) {
-                sellCoin(coin, tradingPair, currentPrice);
-                return; // Skip buying if we just sold
+                sellCoin(coin, tradingPair, heldAmount);
+                return;
             }
-        }
 
-        // Check for buying condition
-        if (priceChange <= purchaseDropPercent) {
-            buyCoin(coin, tradingPair, currentPrice);
+            // Average Down Logic
+            if (averageDownCondition) {
+                double fundsToSpend = usdcBalance >= (heldAmount * currentPrice) ? (heldAmount * currentPrice) : usdcBalance * 0.5;
+                double additionalAmount = fundsToSpend / currentPrice;
+                buyCoin(coin, tradingPair, additionalAmount, currentPrice);
+
+                // Update average purchase price
+                tradeInfo.updatePurchase(currentPrice, additionalAmount);
+                savePurchaseHistory(); // Persist changes
+                return;
+            }
         } else {
-            System.out.printf("No significant price drop for %s. Skipping.%n", coin);
+            if (priceChange <= purchaseDropPercent) {
+                buyCoin(coin, tradingPair, usdcBalance * 0.2 / currentPrice, currentPrice);
+            } else {
+                System.out.printf("No significant price drop for %s. Skipping.%n", coin);
+            }
         }
     }
 
-    private void buyCoin(String coin, String tradingPair, double currentPrice) throws Exception {
-        double amountToSpend = usdcBalance * 0.2;
-
+    private void buyCoin(String coin, String tradingPair, double amount, double currentPrice) throws Exception {
         OrderConfiguration config = new OrderConfiguration();
         config.setMarketMarketIoc(new MarketIoc.Builder()
-                .quoteSize(amountToSpend + "")
+                .quoteSize(String.valueOf(amount * currentPrice))
                 .build());
 
         CreateOrderRequest orderRequest = new CreateOrderRequest.Builder()
@@ -89,9 +100,7 @@ public class TradingBot {
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
             System.out.printf("Bought %s: %s%n", coin, orderResponse.getOrderId());
-
-            // Record purchase in memory and persist it to disk
-            purchaseHistory.put(coin, new TradeInfo(currentPrice, LocalDateTime.now()));
+            purchaseHistory.put(coin, new TradeInfo(currentPrice, amount, LocalDateTime.now()));
             savePurchaseHistory();
         } else {
             System.out.printf("Buying %s failed!%n", coin);
@@ -99,12 +108,10 @@ public class TradingBot {
         }
     }
 
-    private void sellCoin(String coin, String tradingPair, double currentPrice) throws Exception {
-        double amountToSell = 1.0;
-
+    private void sellCoin(String coin, String tradingPair, double amount) throws Exception {
         OrderConfiguration config = new OrderConfiguration();
         config.setMarketMarketIoc(new MarketIoc.Builder()
-                .baseSize(amountToSell + "")
+                .baseSize(String.valueOf(amount))
                 .build());
 
         CreateOrderRequest orderRequest = new CreateOrderRequest.Builder()
@@ -117,8 +124,6 @@ public class TradingBot {
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
             System.out.printf("Sold %s: %s%n", coin, orderResponse.getOrderId());
-
-            // Remove from purchase history and save changes
             purchaseHistory.remove(coin);
             savePurchaseHistory();
         } else {

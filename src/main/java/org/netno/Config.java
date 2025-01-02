@@ -17,6 +17,7 @@ public class Config {
     private double purchaseDropPercent;
     private double sellRisePercent;
     private int sellAfterHours;
+    private double averageDownDropPercent; // New field
 
     // Getters
     public String getApiKey() {
@@ -47,6 +48,10 @@ public class Config {
         return sellAfterHours;
     }
 
+    public double getAverageDownDropPercent() {
+        return averageDownDropPercent;
+    }
+
     // Load configuration from JSON file
     public static Config loadConfig(String filePath) throws Exception {
         String content = new String(Files.readAllBytes(Paths.get(filePath)));
@@ -63,6 +68,7 @@ public class Config {
         config.purchaseDropPercent = json.getDouble("purchaseDropPercent");
         config.sellRisePercent = json.getDouble("sellRisePercent");
         config.sellAfterHours = json.getInt("sellAfterHours");
+        config.averageDownDropPercent = json.getDouble("averageDownDropPercent");
 
         return config;
     }
