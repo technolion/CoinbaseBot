@@ -1,5 +1,8 @@
 package org.netno;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
@@ -8,9 +11,13 @@ public class TradeInfo implements Serializable {
 
     private double purchasePrice;
     private double amount;
-    private final LocalDateTime purchaseDate;
+    private LocalDateTime purchaseDate;
 
-    public TradeInfo(double purchasePrice, double amount, LocalDateTime purchaseDate) {
+    @JsonCreator
+    public TradeInfo(
+            @JsonProperty("purchasePrice") double purchasePrice,
+            @JsonProperty("amount") double amount,
+            @JsonProperty("purchaseDate") LocalDateTime purchaseDate) {
         this.purchasePrice = purchasePrice;
         this.amount = amount;
         this.purchaseDate = purchaseDate;
@@ -29,7 +36,6 @@ public class TradeInfo implements Serializable {
     }
 
     public void updatePurchase(double additionalPrice, double additionalAmount) {
-        // Calculate new weighted average price
         double totalCost = (purchasePrice * amount) + (additionalPrice * additionalAmount);
         double totalAmount = amount + additionalAmount;
 
