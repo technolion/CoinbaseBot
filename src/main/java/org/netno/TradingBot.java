@@ -29,6 +29,8 @@ public class TradingBot {
     private final double sellRisePercent;
     private final int sellAfterHours;
     private final double averageDownDropPercent;
+    private final int maxHeldCoins;
+    private final double useFundsPortionPerTrade;
 
     private Map<String, TradeInfo> purchaseHistory;
 
@@ -42,6 +44,8 @@ public class TradingBot {
         this.sellRisePercent = config.getSellRisePercent();
         this.sellAfterHours = config.getSellAfterHours();
         this.averageDownDropPercent = config.getAverageDownDropPercent();
+        this.maxHeldCoins = config.getMaxHeldCoins();
+        this.useFundsPortionPerTrade = config.getUseFundsPortionPerTrade();
 
         this.purchaseHistory = loadPurchaseHistory();
     }
@@ -56,7 +60,8 @@ public class TradingBot {
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
 
         // Check if the coin is already in the purchase history
-        if (purchaseHistory.containsKey(coin)) {
+        if (purchaseHistory.containsKey(coin)) { 
+            // Existing coin - handle sell or average down
             TradeInfo tradeInfo = purchaseHistory.get(coin);
             LocalDateTime purchaseDate = tradeInfo.getPurchaseDate();
             double purchasePrice = tradeInfo.getPurchasePrice();
@@ -79,7 +84,7 @@ public class TradingBot {
             if (profitCondition || timeCondition) {
                 System.out.printf("Selling %s due to %s%n",
                         coin, profitCondition ? "profit condition" : "time condition");
-                sellCoin(coin, tradingPair, heldAmount);
+                sellCoin(coin, tradingPair, heldAmount); // Sell existing coin
                 return;
             } else {
                 System.out.printf("No significant price increase for %s. Skipping SALE.%n", coin);
@@ -89,21 +94,28 @@ public class TradingBot {
             if (averageDownCondition) {
                 System.out.printf("Averaging down for %s. Price drop detected!%n", coin);
                 double fundsToSpend = usdcBalance >= (heldAmount * currentPrice) ? (heldAmount * currentPrice)
-                        : usdcBalance * 0.5;
+                        : usdcBalance * useFundsPortionPerTrade;
                 System.out.printf("Buying %s for %.2f USDC at %.2f per unit.%n",
                         coin, fundsToSpend, currentPrice);
-                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
+                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true); // Average down
                 return;
             } else {
                 System.out.printf("No price drop for averaging down %s. Skipping.%n", coin);
             }
-        } else { // Initial Purchase
+        } else {
+            // Not existing. Check the limit for new purchases
+            if (purchaseHistory.size() >= maxHeldCoins) {
+                System.out.printf("Max held coins limit (%d) reached. Skipping BUY for %s.%n", maxHeldCoins, coin);
+                return; // Skip the BUY operation if limit is reached
+            }
+
+            // Initial Purchase Logic
             System.out.printf("Checking BUY condition for %s. Price Change: %.2f%%%n", coin, priceChange);
             if (priceChange <= purchaseDropPercent) {
-                double fundsToSpend = usdcBalance * 0.2;
+                double fundsToSpend = usdcBalance * useFundsPortionPerTrade;
                 System.out.printf("Buying %s for %.2f USDC at %.2f per unit.%n",
                         coin, fundsToSpend, currentPrice);
-                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false);
+                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false); // Initial buy
             } else {
                 System.out.printf("No significant price drop for %s. Skipping BUY.%n", coin);
             }

@@ -17,7 +17,9 @@ public class Config {
     private double purchaseDropPercent;
     private double sellRisePercent;
     private int sellAfterHours;
-    private double averageDownDropPercent; // New field
+    private double averageDownDropPercent;
+    private int maxHeldCoins;
+    private double useFundsPortionPerTrade;
 
     // Getters
     public String getApiKey() {
@@ -52,6 +54,14 @@ public class Config {
         return averageDownDropPercent;
     }
 
+    public int getMaxHeldCoins() {
+        return maxHeldCoins;
+    }
+
+    public double getUseFundsPortionPerTrade() {
+        return useFundsPortionPerTrade;
+    }
+
     // Load configuration from JSON file
     public static Config loadConfig(String filePath) throws Exception {
         String content = new String(Files.readAllBytes(Paths.get(filePath)));
@@ -63,13 +73,12 @@ public class Config {
         config.coins = json.getJSONArray("coins").toList().stream()
                 .map(Object::toString)
                 .collect(Collectors.toList());
-
-        // Load new conditions
         config.purchaseDropPercent = json.getDouble("purchaseDropPercent");
         config.sellRisePercent = json.getDouble("sellRisePercent");
         config.sellAfterHours = json.getInt("sellAfterHours");
         config.averageDownDropPercent = json.getDouble("averageDownDropPercent");
-
+        config.maxHeldCoins = json.getInt("maxHeldCoins");
+        config.useFundsPortionPerTrade = json.getDouble("useFundsPortionPerTrade");
         return config;
     }
 }
