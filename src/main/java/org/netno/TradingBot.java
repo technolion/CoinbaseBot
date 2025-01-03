@@ -48,78 +48,109 @@ public class TradingBot {
 
     public void executeTrade(String coin) throws Exception {
         String tradingPair = coin + "-USDC";
-
+    
         // Retrieve the current USDC balance before making a decision
         double usdcBalance = marketDataFetcher.getUsdcBalance();
-
+    
         double priceChange = marketDataFetcher.get24hPriceChange(tradingPair);
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
-
+    
+        // Check if the coin is already in the purchase history
         if (purchaseHistory.containsKey(coin)) {
             TradeInfo tradeInfo = purchaseHistory.get(coin);
             LocalDateTime purchaseDate = tradeInfo.getPurchaseDate();
             double purchasePrice = tradeInfo.getPurchasePrice();
             double heldAmount = tradeInfo.getAmount();
-
+    
+            // Calculate percentage difference between current price and purchase price
+            double priceDifference = ((currentPrice - purchasePrice) / purchasePrice) * 100;
+    
+            // Display current status of the coin
+            System.out.printf(
+                    "Status for %s: Held Amount: %.6f, Purchase Price: %.2f, Current Price: %.2f, Difference: %.2f%%%n",
+                    coin, heldAmount, purchasePrice, currentPrice, priceDifference);
+    
+            // Check for selling conditions
             boolean profitCondition = currentPrice >= purchasePrice * (1 + (sellRisePercent / 100.0));
             boolean timeCondition = ChronoUnit.HOURS.between(purchaseDate, LocalDateTime.now()) > sellAfterHours;
             boolean averageDownCondition = currentPrice <= purchasePrice * (1 + (averageDownDropPercent / 100.0));
-
+    
+            // Sell if profit or time condition is met
             if (profitCondition || timeCondition) {
+                System.out.printf("Selling %s due to %s%n",
+                        coin, profitCondition ? "profit condition" : "time condition");
                 sellCoin(coin, tradingPair, heldAmount);
                 return;
             } else {
-                System.out.printf("No significant price increase for %s. Skipping.%n", coin);
+                System.out.printf("No significant price increase for %s. Skipping SALE.%n", coin);
             }
-
+    
             // Average Down Logic
             if (averageDownCondition) {
+                System.out.printf("Averaging down for %s. Price drop detected!%n", coin);
                 double fundsToSpend = usdcBalance >= (heldAmount * currentPrice) ? (heldAmount * currentPrice)
                         : usdcBalance * 0.5;
                 double additionalAmount = fundsToSpend / currentPrice;
+    
                 buyCoin(coin, tradingPair, additionalAmount, currentPrice);
-
+    
                 // Update average purchase price
                 tradeInfo.updatePurchase(currentPrice, additionalAmount);
                 savePurchaseHistory(); // Persist changes
                 return;
+            } else {
+                System.out.printf("No price drop for averaging down %s. Skipping.%n", coin);
             }
-        } else {
+        } else { // Initial Purchase
+            System.out.printf("Checking BUY condition for %s. Price Change: %.2f%%%n", coin, priceChange);
             if (priceChange <= purchaseDropPercent) {
                 double fundsToSpend = usdcBalance * 0.2;
                 double amountToBuy = fundsToSpend / currentPrice;
+                System.out.printf("Buying %s for %.2f USDC at %.2f per unit.%n",
+                        coin, fundsToSpend, currentPrice);
                 buyCoin(coin, tradingPair, amountToBuy, currentPrice);
             } else {
-                System.out.printf("No significant price drop for %s. Skipping.%n", coin);
+                System.out.printf("No significant price drop for %s. Skipping BUY.%n", coin);
             }
         }
     }
 
-    private void buyCoin(String coin, String tradingPair, double amount, double currentPrice) throws Exception {
-        // Calculate the quote size based on the amount and price
-        double quoteSize = amount * currentPrice;
-
-        // Round the quote size to 2 decimal places
-        String roundedQuoteSize = BigDecimal.valueOf(quoteSize)
-                .setScale(2, RoundingMode.HALF_UP)
-                .toPlainString();
-
+    private void buyCoin(String coin, String tradingPair, double amountToSpend, double currentPrice) throws Exception {
+        // Fetch precision requirement for the trading pair
+        double precision = marketDataFetcher.getBasePrecision(tradingPair);
+    
+        // Calculate how many coins can be bought for the USD amount
+        double amountToBuy = amountToSpend / currentPrice;
+    
+        // Calculate the number of decimal places based on the precision value
+        int decimalPlaces = BigDecimal.valueOf(precision)
+                                      .stripTrailingZeros()
+                                      .scale();
+    
+        // Round the number of coins to the required precision
+        String roundedBaseSize = BigDecimal.valueOf(amountToBuy)
+                                           .setScale(decimalPlaces, RoundingMode.HALF_DOWN)
+                                           .toPlainString();
+    
+        // Create the OrderConfiguration using baseSize
         OrderConfiguration config = new OrderConfiguration();
         config.setMarketMarketIoc(new MarketIoc.Builder()
-                .quoteSize(roundedQuoteSize) // Use rounded value here
+                .baseSize(roundedBaseSize) // Use baseSize instead of quoteSize
                 .build());
-
+    
+        // Build the order request
         CreateOrderRequest orderRequest = new CreateOrderRequest.Builder()
                 .clientOrderId(LocalDateTime.now().toString())
                 .productId(tradingPair)
                 .side("BUY")
                 .orderConfiguration(config)
                 .build();
-
+    
+        // Execute the order
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
-            System.out.printf("Bought %s: %s%n", coin, orderResponse.getOrderId());
-            purchaseHistory.put(coin, new TradeInfo(currentPrice, amount, LocalDateTime.now()));
+            System.out.printf("Bought %s coins of %s%n", roundedBaseSize, coin);
+            purchaseHistory.put(coin, new TradeInfo(currentPrice, Double.parseDouble(roundedBaseSize), LocalDateTime.now()));
             savePurchaseHistory();
         } else {
             System.out.printf("Buying %s failed!%n", coin);
@@ -128,21 +159,27 @@ public class TradingBot {
     }
 
     private void sellCoin(String coin, String tradingPair, double amount) throws Exception {
+        // Use the exact amount from purchase history without rounding
+        String exactSize = Double.toString(amount);
+    
+        // Create the OrderConfiguration using baseSize
         OrderConfiguration config = new OrderConfiguration();
         config.setMarketMarketIoc(new MarketIoc.Builder()
-                .baseSize(String.valueOf(amount))
+                .baseSize(exactSize) // Use exact amount
                 .build());
-
+    
+        // Build the order request
         CreateOrderRequest orderRequest = new CreateOrderRequest.Builder()
                 .clientOrderId(LocalDateTime.now().toString())
                 .productId(tradingPair)
                 .side("SELL")
                 .orderConfiguration(config)
                 .build();
-
+    
+        // Execute the order
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
-            System.out.printf("Sold %s: %s%n", coin, orderResponse.getOrderId());
+            System.out.printf("Sold %s coins of %s%n", exactSize, coin);
             purchaseHistory.remove(coin);
             savePurchaseHistory();
         } else {

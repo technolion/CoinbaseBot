@@ -75,4 +75,14 @@ public class MarketDataFetcher {
          // Return the portfolio or null if not found
          return result.orElse(null);
     }
+
+    // Fetch precision for base currency size
+    public double getBasePrecision(String tradingPair) throws Exception {
+        GetProductRequest request = new GetProductRequest.Builder()
+                .productId(tradingPair)
+                .build();
+
+        GetProductResponse response = productsService.getProduct(request);
+        return Double.parseDouble(response.getBaseIncrement());
+    }
 }
