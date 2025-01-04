@@ -140,7 +140,7 @@ public class TradingBot {
                     currentPrice >= purchasePrice * (1 + profitLevels.get(profitLevelIndex) / 100.0)) {
                 // Move to the next profit level
                 tradeInfo.setProfitLevelIndex(profitLevelIndex + 1);
-                log("INFO", String.format("Reached profit level %d (%.2f%%) for %s. Waiting for next level...",
+                log("INFO", String.format("Reached profit level %d (%.6f%%) for %s. Waiting for next level...",
                         profitLevelIndex + 1, profitLevels.get(profitLevelIndex), coin));
                 saveAssets(); // Save changes
                 return; // Skip further processing
@@ -151,11 +151,16 @@ public class TradingBot {
                     ? purchasePrice * (1 + profitLevels.get(profitLevelIndex - 1) / 100.0)
                     : purchasePrice;
 
-            if (currentPrice < trailingStopLoss || currentPrice < previousProfitLevel) {
-                log("INFO", String.format("Selling %s due to stop-loss or profit drop. Current: %.6f, Stop-Loss: %.6f",
+            if (currentPrice < trailingStopLoss) {
+                log("INFO", String.format("Selling %s due to stop-loss. Current: %.6f, Stop-Loss: %.6f",
                         coin, currentPrice, trailingStopLoss));
                 sellCoin(coin, tradingPair, heldAmount);
-                return; // Skip further processing
+                return;
+            } else if (profitLevelIndex > 0 && currentPrice < previousProfitLevel) {
+                log("INFO", String.format("Selling %s due to profit drop. Current: %.6f, Previous Profit Level: %.6f",
+                        coin, currentPrice, previousProfitLevel));
+                sellCoin(coin, tradingPair, heldAmount);
+                return;
             }
 
             // 4. Hold the coin if no condition is met
