@@ -13,12 +13,12 @@ public class Config {
     private String portfolioId;
     private List<String> coins;
     private double purchaseDropPercent;
-    private double sellRisePercent;
-    private int sellAfterHours;
     private double averageDownDropPercent;
     private int maxHeldCoins;
     private double useFundsPortionPerTrade;
     private String logLevel;
+    private double trailingStopLossPercent;
+    private List<Double> profitLevels;
 
     // Getters
     public String getApiKey() {
@@ -41,14 +41,6 @@ public class Config {
         return purchaseDropPercent;
     }
 
-    public double getSellRisePercent() {
-        return sellRisePercent;
-    }
-
-    public int getSellAfterHours() {
-        return sellAfterHours;
-    }
-
     public double getAverageDownDropPercent() {
         return averageDownDropPercent;
     }
@@ -65,6 +57,14 @@ public class Config {
         return logLevel;
     }
 
+    public double getTrailingStopLossPercent() {
+        return trailingStopLossPercent;
+    }
+    
+    public List<Double> getProfitLevels() {
+        return profitLevels;
+    }
+
     // Load configuration from JSON file
     public static Config loadConfig(String filePath) throws Exception {
         String content = new String(Files.readAllBytes(Paths.get(filePath)));
@@ -77,12 +77,14 @@ public class Config {
                 .map(Object::toString)
                 .collect(Collectors.toList());
         config.purchaseDropPercent = json.getDouble("purchaseDropPercent");
-        config.sellRisePercent = json.getDouble("sellRisePercent");
-        config.sellAfterHours = json.getInt("sellAfterHours");
         config.averageDownDropPercent = json.getDouble("averageDownDropPercent");
         config.maxHeldCoins = json.getInt("maxHeldCoins");
         config.useFundsPortionPerTrade = json.getDouble("useFundsPortionPerTrade");
         config.logLevel = json.getString("logLevel").toUpperCase();
+        config.trailingStopLossPercent = json.getDouble("trailingStopLossPercent");
+        config.profitLevels = json.getJSONArray("profitLevels").toList().stream()
+                .map(obj -> Double.valueOf(obj.toString()))
+                .collect(Collectors.toList());
         return config;
     }
 }

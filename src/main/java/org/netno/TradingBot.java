@@ -16,7 +16,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,11 +39,11 @@ public class TradingBot {
 
     private final List<String> coinsToTrade;
     private final double purchaseDropPercent;
-    private final double sellRisePercent;
-    private final int sellAfterHours;
     private final double averageDownDropPercent;
     private final int maxHeldCoins;
     private final double useFundsPortionPerTrade;
+    private final double trailingStopLossPercent; // Stop-loss percentage
+    private final List<Double> profitLevels; // Profit levels for tracking
 
     private Map<String, TradeInfo> purchaseHistory;
 
@@ -55,16 +54,16 @@ public class TradingBot {
 
         this.coinsToTrade = config.getCoins();
         this.purchaseDropPercent = config.getPurchaseDropPercent();
-        this.sellRisePercent = config.getSellRisePercent();
-        this.sellAfterHours = config.getSellAfterHours();
         this.averageDownDropPercent = config.getAverageDownDropPercent();
         this.maxHeldCoins = config.getMaxHeldCoins();
         this.useFundsPortionPerTrade = config.getUseFundsPortionPerTrade();
+        this.trailingStopLossPercent = config.getTrailingStopLossPercent();
+        this.profitLevels = config.getProfitLevels();
 
         this.purchaseHistory = loadAssets();
         this.logLevel = LogLevel.valueOf(config.getLogLevel().toUpperCase());
         log("INFO", "TradingBot initialized.");
-        log("INFO", String.format("Current cash: %s USDC.%n", usdcBalance));
+        log("INFO", String.format("Current cash: %s USDC.", usdcBalance));
     }
 
     public void startTrading() {
@@ -100,62 +99,84 @@ public class TradingBot {
         if (purchaseHistory.containsKey(coin)) {
             // Existing coin - handle sell or average down
             TradeInfo tradeInfo = purchaseHistory.get(coin);
-            LocalDateTime purchaseDate = tradeInfo.getPurchaseDate();
             double purchasePrice = tradeInfo.getPurchasePrice();
             double heldAmount = tradeInfo.getAmount();
+
+            // Dynamic stop-loss and profit tracking variables
+            double highestPrice = tradeInfo.getHighestPrice();
+            double trailingStopLoss = tradeInfo.getTrailingStopLoss();
+            int profitLevelIndex = tradeInfo.getProfitLevelIndex();
+            boolean hasAveragedDown = tradeInfo.hasAveragedDown();
+
+            // Update trailing stop-loss based on price movement
+            tradeInfo.updateStopLoss(currentPrice, trailingStopLossPercent);
 
             // Calculate percentage difference between current price and purchase price
             double priceDifference = ((currentPrice - purchasePrice) / purchasePrice) * 100;
 
             // Display current status of the coin
             log("DEBUG", String.format(
-                    "Status for %s: Held Amount: %.6f, Purchase Price: %.2f, Current Price: %.2f, Difference: %.2f%%%n",
-                    coin, heldAmount, purchasePrice, currentPrice, priceDifference));
+                    "Status for %s: Held Amount: %.6f, Purchase Price: %.6f, Current Price: %.6f, Highest Price: %.6f, Stop-Loss: %.4f, Difference: %.6f%%",
+                    coin, heldAmount, purchasePrice, currentPrice, highestPrice, trailingStopLoss, priceDifference));
 
-            // Check for selling conditions
-            boolean profitCondition = currentPrice >= purchasePrice * (1 + (sellRisePercent / 100.0));
-            boolean timeCondition = ChronoUnit.HOURS.between(purchaseDate, LocalDateTime.now()) > sellAfterHours;
-            boolean averageDownCondition = currentPrice <= purchasePrice * (1 + (averageDownDropPercent / 100.0));
-
-            // Sell if profit or time condition is met
-            if (profitCondition || timeCondition) {
-                log("INFO", String.format("Selling %s due to %s%n",
-                        coin, profitCondition ? "profit condition" : "time condition"));
-                sellCoin(coin, tradingPair, heldAmount); // Sell existing coin
-                return;
-            } else {
-                log("DEBUG", String.format("No significant price increase for %s. Skipping SALE.%n", coin));
-            }
-
-            // Average Down Logic
+            // 1. Average Down Logic (Only Once Per Coin)
+            boolean averageDownCondition = !hasAveragedDown &&
+                    currentPrice <= purchasePrice * (1 + (averageDownDropPercent / 100.0));
             if (averageDownCondition) {
-                log("INFO", String.format("Averaging down for %s. Price drop detected!%n", coin));
-                double fundsToSpend = usdcBalance >= (heldAmount * currentPrice) ? (heldAmount * currentPrice)
+                log("INFO", String.format("Averaging down for %s at %.6f. Current Stop-Loss: %.6f",
+                        coin, currentPrice, trailingStopLoss));
+
+                // Calculate funds to spend for averaging down
+                double fundsToSpend = usdcBalance >= (heldAmount * currentPrice)
+                        ? (heldAmount * currentPrice)
                         : usdcBalance * useFundsPortionPerTrade;
-                log("INFO", String.format("Buying %s for %.2f USDC at %.2f per unit.%n",
-                        coin, fundsToSpend, currentPrice));
-                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true); // Average down
-                return;
-            } else {
-                log("DEBUG", String.format("No price drop for averaging down %s. Skipping.%n", coin));
+
+                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
+                return; // Skip further processing
             }
+
+            // 2. Profit Level Handling
+            if (profitLevelIndex < profitLevels.size() &&
+                    currentPrice >= purchasePrice * (1 + profitLevels.get(profitLevelIndex) / 100.0)) {
+                // Move to the next profit level
+                tradeInfo.setProfitLevelIndex(profitLevelIndex + 1);
+                log("INFO", String.format("Reached profit level %d (%.2f%%) for %s. Waiting for next level...",
+                        profitLevelIndex + 1, profitLevels.get(profitLevelIndex), coin));
+                saveAssets(); // Save changes
+                return; // Skip further processing
+            }
+
+            // 3. Stop-Loss or Profit Drop Handling
+            double previousProfitLevel = profitLevelIndex > 0
+                    ? purchasePrice * (1 + profitLevels.get(profitLevelIndex - 1) / 100.0)
+                    : purchasePrice;
+
+            if (currentPrice < trailingStopLoss || currentPrice < previousProfitLevel) {
+                log("INFO", String.format("Selling %s due to stop-loss or profit drop. Current: %.6f, Stop-Loss: %.6f",
+                        coin, currentPrice, trailingStopLoss));
+                sellCoin(coin, tradingPair, heldAmount);
+                return; // Skip further processing
+            }
+
+            // 4. Hold the coin if no condition is met
+            log("DEBUG", String.format("Holding %s. Price above stop-loss and profit levels. Skipping SALE.", coin));
+
         } else {
-            // Not existing. Check the limit for new purchases
+            // Initial Purchase Logic - Only buy if not already held
             if (purchaseHistory.size() >= maxHeldCoins) {
                 log("DEBUG",
-                        String.format("Max held coins limit (%d) reached. Skipping BUY for %s.%n", maxHeldCoins, coin));
+                        String.format("Max held coins limit (%d) reached. Skipping BUY for %s.", maxHeldCoins, coin));
                 return; // Skip the BUY operation if limit is reached
             }
 
-            // Initial Purchase Logic
-            log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.2f%%%n", coin, priceChange));
+            log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.6f%%", coin, priceChange));
             if (priceChange <= purchaseDropPercent) {
                 double fundsToSpend = usdcBalance * useFundsPortionPerTrade;
-                log("INFO", String.format("Buying %s for %.2f USDC at %.2f per unit.%n",
+                log("INFO", String.format("Buying %s for %.6f USDC at %.6f per unit.",
                         coin, fundsToSpend, currentPrice));
                 buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false); // Initial buy
             } else {
-                log("DEBUG", String.format("No significant price drop for %s. Skipping BUY.%n", coin));
+                log("DEBUG", String.format("No significant price drop for %s. Skipping BUY.", coin));
             }
         }
     }
@@ -194,21 +215,46 @@ public class TradingBot {
 
         // Execute the order
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
+
         if (orderResponse.isSuccess()) {
-            log("INFO", String.format("Bought %s coins of %s. Order ID: %s%n", roundedBaseSize, coin,
+            log("INFO", String.format("Bought %s coins of %s. Order ID: %s", roundedBaseSize, coin,
                     orderResponse.getSuccessResponse().getOrderId()));
+
+            // If this is an update (averaging down)
             if (update) {
-                TradeInfo ti = purchaseHistory.get(coin);
-                if (ti != null) {
-                    ti.updatePurchase(currentPrice, Double.parseDouble(roundedBaseSize));
+                TradeInfo tradeInfo = purchaseHistory.get(coin);
+                if (tradeInfo != null) {
+                    // Update purchase price and amount
+                    tradeInfo.updatePurchase(currentPrice, Double.parseDouble(roundedBaseSize));
+
+                    // Mark as averaged down
+                    tradeInfo.setAveragedDown(true);
+
+                    // Update stop-loss based on the new average purchase price
+                    double updatedStopLoss = tradeInfo.getPurchasePrice() * (1 - trailingStopLossPercent / 100.0);
+                    tradeInfo.setTrailingStopLoss(updatedStopLoss);
+
+                    log("INFO", String.format("Updated stop-loss for %s to %.6f", coin, updatedStopLoss));
                 }
-            } else {
+            } else { // Initial purchase
+                // Calculate the initial stop-loss price
+                double initialStopLoss = currentPrice * (1 - trailingStopLossPercent / 100.0);
+
+                // Add new entry to the purchase history
                 purchaseHistory.put(coin,
-                        new TradeInfo(currentPrice, Double.parseDouble(roundedBaseSize), LocalDateTime.now()));
+                        new TradeInfo(currentPrice, Double.parseDouble(roundedBaseSize), LocalDateTime.now(),
+                                currentPrice, // Highest price starts at the purchase price
+                                initialStopLoss, // Initial stop-loss
+                                0, // Profit level index
+                                false // Averaged down flag
+                        ));
+                log("INFO", String.format("Initial stop-loss for %s set to %.6f", coin, initialStopLoss));
             }
+
+            // Save updated assets to file
             saveAssets();
         } else {
-            log("ERROR", String.format("Buying %s failed!%n", coin));
+            log("ERROR", String.format("Buying %s failed!", coin));
             log("ERROR", String.format(orderResponse.getErrorResponse().getError()));
         }
     }
@@ -234,12 +280,12 @@ public class TradingBot {
         // Execute the order
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
-            log("INFO", String.format("Sold %s coins of %s. Order ID: %s%n", exactSize, coin,
+            log("INFO", String.format("Sold %s coins of %s. Order ID: %s", exactSize, coin,
                     orderResponse.getSuccessResponse().getOrderId()));
             purchaseHistory.remove(coin);
             saveAssets();
         } else {
-            log("ERROR", String.format("Selling %s failed!%n", coin));
+            log("ERROR", String.format("Selling %s failed!", coin));
             log("ERROR", String.format(orderResponse.getErrorResponse().getError()));
         }
     }
