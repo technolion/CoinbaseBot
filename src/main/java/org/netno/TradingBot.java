@@ -3,6 +3,7 @@ package org.netno;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.coinbase.advanced.client.CoinbaseAdvancedClient;
 import com.coinbase.advanced.factory.CoinbaseAdvancedServiceFactory;
 import com.coinbase.advanced.model.orders.CreateOrderRequest;
 import com.coinbase.advanced.model.orders.CreateOrderResponse;
@@ -17,7 +18,10 @@ import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.TimerTask;
+import java.util.Timer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -34,6 +38,7 @@ public class TradingBot {
     private final OrdersService ordersService;
     private final MarketDataFetcher marketDataFetcher;
 
+    private final List<String> coinsToTrade;
     private final double purchaseDropPercent;
     private final double sellRisePercent;
     private final int sellAfterHours;
@@ -43,11 +48,12 @@ public class TradingBot {
 
     private Map<String, TradeInfo> purchaseHistory;
 
-    public TradingBot(CoinbaseBot bot, Config config) {
-        this.ordersService = CoinbaseAdvancedServiceFactory.createOrdersService(bot.getClient());
-        this.marketDataFetcher = new MarketDataFetcher(bot, config.getPortfolioId());
+    public TradingBot(CoinbaseAdvancedClient client, Config config) {
+        this.ordersService = CoinbaseAdvancedServiceFactory.createOrdersService(client);
+        this.marketDataFetcher = new MarketDataFetcher(client, config.getPortfolioId());
         double usdcBalance = marketDataFetcher.getUsdcBalance();
-        
+
+        this.coinsToTrade = config.getCoins();
         this.purchaseDropPercent = config.getPurchaseDropPercent();
         this.sellRisePercent = config.getSellRisePercent();
         this.sellAfterHours = config.getSellAfterHours();
@@ -59,6 +65,26 @@ public class TradingBot {
         this.logLevel = LogLevel.valueOf(config.getLogLevel().toUpperCase());
         log("INFO", "TradingBot initialized.");
         log("INFO", String.format("Current cash: %s USDC.%n", usdcBalance));
+    }
+
+    public void startTrading() {
+        log("INFO", "Starting trading loop...");
+
+        // Configure the timer to run the trading loop every minute (60,000 ms)
+        Timer timer = new Timer(true); // Daemon thread
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    log("DEBUG", "---- CHECKING COINS ----");
+                    for (String coin : coinsToTrade) {
+                        executeTrade(coin); // Process each coin
+                    }
+                } catch (Exception e) {
+                    log("ERROR", "Error during trading loop: " + e.getMessage());
+                }
+            }
+        }, 0, 60000); // Initial delay 0ms, repeat every 60000ms (1 minute)
     }
 
     public void executeTrade(String coin) throws Exception {
@@ -116,7 +142,8 @@ public class TradingBot {
         } else {
             // Not existing. Check the limit for new purchases
             if (purchaseHistory.size() >= maxHeldCoins) {
-                log("DEBUG", String.format("Max held coins limit (%d) reached. Skipping BUY for %s.%n", maxHeldCoins, coin));
+                log("DEBUG",
+                        String.format("Max held coins limit (%d) reached. Skipping BUY for %s.%n", maxHeldCoins, coin));
                 return; // Skip the BUY operation if limit is reached
             }
 

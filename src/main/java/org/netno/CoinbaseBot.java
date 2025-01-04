@@ -3,11 +3,7 @@ package org.netno;
 import com.coinbase.advanced.client.CoinbaseAdvancedClient;
 import com.coinbase.advanced.credentials.CoinbaseAdvancedCredentials;
 import org.json.JSONObject;
-
-import java.util.List;
 import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class CoinbaseBot {
 
@@ -82,23 +78,7 @@ public class CoinbaseBot {
 
         System.out.println("Starting trading loop...");
 
-        Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-
-                    TradingBot bot = new TradingBot(new CoinbaseBot(), config);
-                    List<String> coinsToTrade = config.getCoins();
-
-                    for (String coin : coinsToTrade) {
-                        bot.executeTrade(coin);
-                    }
-                } catch (Exception e) {
-                    System.out.println("Error during trading loop: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-        }, 0, 60_000); // Execute every 60 seconds
+        TradingBot bot = new TradingBot(client, config);
+        bot.startTrading();
     }
 }

@@ -3,6 +3,7 @@ package org.netno;
 import java.util.List;
 import java.util.Optional;
 
+import com.coinbase.advanced.client.CoinbaseAdvancedClient;
 import com.coinbase.advanced.factory.CoinbaseAdvancedServiceFactory;
 import com.coinbase.advanced.model.portfolios.GetPortfolioBreakdownRequest;
 import com.coinbase.advanced.model.portfolios.GetPortfolioBreakdownResponse;
@@ -20,9 +21,9 @@ public class MarketDataFetcher {
     private final PortfoliosService portfoliosService;
     private final Portfolio portfolio;
 
-    public MarketDataFetcher(CoinbaseBot bot, String portfolioId) {
-        this.productsService = CoinbaseAdvancedServiceFactory.createProductsService(bot.getClient());
-        this.portfoliosService = CoinbaseAdvancedServiceFactory.createPortfoliosService(bot.getClient());
+    public MarketDataFetcher(CoinbaseAdvancedClient client, String portfolioId) {
+        this.productsService = CoinbaseAdvancedServiceFactory.createProductsService(client);
+        this.portfoliosService = CoinbaseAdvancedServiceFactory.createPortfoliosService(client);
         this.portfolio = findPortfolioById(portfolioId);
     }
 
