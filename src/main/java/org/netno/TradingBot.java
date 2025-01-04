@@ -11,7 +11,9 @@ import com.coinbase.advanced.model.orders.OrderConfiguration;
 import com.coinbase.advanced.orders.OrdersService;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -20,7 +22,14 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public class TradingBot {
-    private static final String HISTORY_FILE = "purchaseHistory.json";
+
+    public enum LogLevel {
+        TRACE, DEBUG, INFO, ERROR
+    }
+
+    private LogLevel logLevel;
+    private static final String ASSETS_FILE = "currentAssets.json";
+    private static final String LOG_FILE = "trading.log";
 
     private final OrdersService ordersService;
     private final MarketDataFetcher marketDataFetcher;
@@ -38,8 +47,7 @@ public class TradingBot {
         this.ordersService = CoinbaseAdvancedServiceFactory.createOrdersService(bot.getClient());
         this.marketDataFetcher = new MarketDataFetcher(bot, config.getPortfolioId());
         double usdcBalance = marketDataFetcher.getUsdcBalance();
-        System.out.printf("Current cash: %s USDC.%n", usdcBalance);
-
+        
         this.purchaseDropPercent = config.getPurchaseDropPercent();
         this.sellRisePercent = config.getSellRisePercent();
         this.sellAfterHours = config.getSellAfterHours();
@@ -47,7 +55,10 @@ public class TradingBot {
         this.maxHeldCoins = config.getMaxHeldCoins();
         this.useFundsPortionPerTrade = config.getUseFundsPortionPerTrade();
 
-        this.purchaseHistory = loadPurchaseHistory();
+        this.purchaseHistory = loadAssets();
+        this.logLevel = LogLevel.valueOf(config.getLogLevel().toUpperCase());
+        log("INFO", "TradingBot initialized.");
+        log("INFO", String.format("Current cash: %s USDC.%n", usdcBalance));
     }
 
     public void executeTrade(String coin) throws Exception {
@@ -60,7 +71,7 @@ public class TradingBot {
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
 
         // Check if the coin is already in the purchase history
-        if (purchaseHistory.containsKey(coin)) { 
+        if (purchaseHistory.containsKey(coin)) {
             // Existing coin - handle sell or average down
             TradeInfo tradeInfo = purchaseHistory.get(coin);
             LocalDateTime purchaseDate = tradeInfo.getPurchaseDate();
@@ -71,9 +82,9 @@ public class TradingBot {
             double priceDifference = ((currentPrice - purchasePrice) / purchasePrice) * 100;
 
             // Display current status of the coin
-            System.out.printf(
+            log("DEBUG", String.format(
                     "Status for %s: Held Amount: %.6f, Purchase Price: %.2f, Current Price: %.2f, Difference: %.2f%%%n",
-                    coin, heldAmount, purchasePrice, currentPrice, priceDifference);
+                    coin, heldAmount, purchasePrice, currentPrice, priceDifference));
 
             // Check for selling conditions
             boolean profitCondition = currentPrice >= purchasePrice * (1 + (sellRisePercent / 100.0));
@@ -82,42 +93,42 @@ public class TradingBot {
 
             // Sell if profit or time condition is met
             if (profitCondition || timeCondition) {
-                System.out.printf("Selling %s due to %s%n",
-                        coin, profitCondition ? "profit condition" : "time condition");
+                log("INFO", String.format("Selling %s due to %s%n",
+                        coin, profitCondition ? "profit condition" : "time condition"));
                 sellCoin(coin, tradingPair, heldAmount); // Sell existing coin
                 return;
             } else {
-                System.out.printf("No significant price increase for %s. Skipping SALE.%n", coin);
+                log("DEBUG", String.format("No significant price increase for %s. Skipping SALE.%n", coin));
             }
 
             // Average Down Logic
             if (averageDownCondition) {
-                System.out.printf("Averaging down for %s. Price drop detected!%n", coin);
+                log("INFO", String.format("Averaging down for %s. Price drop detected!%n", coin));
                 double fundsToSpend = usdcBalance >= (heldAmount * currentPrice) ? (heldAmount * currentPrice)
                         : usdcBalance * useFundsPortionPerTrade;
-                System.out.printf("Buying %s for %.2f USDC at %.2f per unit.%n",
-                        coin, fundsToSpend, currentPrice);
+                log("INFO", String.format("Buying %s for %.2f USDC at %.2f per unit.%n",
+                        coin, fundsToSpend, currentPrice));
                 buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true); // Average down
                 return;
             } else {
-                System.out.printf("No price drop for averaging down %s. Skipping.%n", coin);
+                log("DEBUG", String.format("No price drop for averaging down %s. Skipping.%n", coin));
             }
         } else {
             // Not existing. Check the limit for new purchases
             if (purchaseHistory.size() >= maxHeldCoins) {
-                System.out.printf("Max held coins limit (%d) reached. Skipping BUY for %s.%n", maxHeldCoins, coin);
+                log("DEBUG", String.format("Max held coins limit (%d) reached. Skipping BUY for %s.%n", maxHeldCoins, coin));
                 return; // Skip the BUY operation if limit is reached
             }
 
             // Initial Purchase Logic
-            System.out.printf("Checking BUY condition for %s. Price Change: %.2f%%%n", coin, priceChange);
+            log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.2f%%%n", coin, priceChange));
             if (priceChange <= purchaseDropPercent) {
                 double fundsToSpend = usdcBalance * useFundsPortionPerTrade;
-                System.out.printf("Buying %s for %.2f USDC at %.2f per unit.%n",
-                        coin, fundsToSpend, currentPrice);
+                log("INFO", String.format("Buying %s for %.2f USDC at %.2f per unit.%n",
+                        coin, fundsToSpend, currentPrice));
                 buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false); // Initial buy
             } else {
-                System.out.printf("No significant price drop for %s. Skipping BUY.%n", coin);
+                log("DEBUG", String.format("No significant price drop for %s. Skipping BUY.%n", coin));
             }
         }
     }
@@ -157,8 +168,8 @@ public class TradingBot {
         // Execute the order
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
-            System.out.printf("Bought %s coins of %s. Order ID: %s%n", roundedBaseSize, coin,
-                    orderResponse.getSuccessResponse().getOrderId());
+            log("INFO", String.format("Bought %s coins of %s. Order ID: %s%n", roundedBaseSize, coin,
+                    orderResponse.getSuccessResponse().getOrderId()));
             if (update) {
                 TradeInfo ti = purchaseHistory.get(coin);
                 if (ti != null) {
@@ -168,10 +179,10 @@ public class TradingBot {
                 purchaseHistory.put(coin,
                         new TradeInfo(currentPrice, Double.parseDouble(roundedBaseSize), LocalDateTime.now()));
             }
-            savePurchaseHistory();
+            saveAssets();
         } else {
-            System.out.printf("Buying %s failed!%n", coin);
-            System.out.println(orderResponse.getErrorResponse().getError());
+            log("ERROR", String.format("Buying %s failed!%n", coin));
+            log("ERROR", String.format(orderResponse.getErrorResponse().getError()));
         }
     }
 
@@ -196,31 +207,31 @@ public class TradingBot {
         // Execute the order
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
-            System.out.printf("Sold %s coins of %s. Order ID: %s%n", exactSize, coin,
-                    orderResponse.getSuccessResponse().getOrderId());
+            log("INFO", String.format("Sold %s coins of %s. Order ID: %s%n", exactSize, coin,
+                    orderResponse.getSuccessResponse().getOrderId()));
             purchaseHistory.remove(coin);
-            savePurchaseHistory();
+            saveAssets();
         } else {
-            System.out.printf("Selling %s failed!%n", coin);
-            System.out.println(orderResponse.getErrorResponse().getError());
+            log("ERROR", String.format("Selling %s failed!%n", coin));
+            log("ERROR", String.format(orderResponse.getErrorResponse().getError()));
         }
     }
 
     // Save purchase history to file
-    private void savePurchaseHistory() {
+    private void saveAssets() {
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule()); // Register Java 8 time module
-            mapper.writeValue(new File(HISTORY_FILE), purchaseHistory);
+            mapper.writeValue(new File(ASSETS_FILE), purchaseHistory);
         } catch (IOException e) {
-            System.out.println("Failed to save purchase history: " + e.getMessage());
+            log("ERROR", String.format("Failed to save purchase history: " + e.getMessage()));
         }
     }
 
     // Load purchase history from file
-    private Map<String, TradeInfo> loadPurchaseHistory() {
+    private Map<String, TradeInfo> loadAssets() {
         try {
-            File file = new File(HISTORY_FILE);
+            File file = new File(ASSETS_FILE);
             if (file.exists()) {
                 ObjectMapper mapper = new ObjectMapper();
                 mapper.registerModule(new JavaTimeModule()); // Register Java 8 time module
@@ -228,8 +239,26 @@ public class TradingBot {
                 });
             }
         } catch (IOException e) {
-            System.out.println("Failed to load purchase history: " + e.getMessage());
+            log("ERROR", String.format("Failed to load purchase history: " + e.getMessage()));
         }
         return new HashMap<>();
+    }
+
+    private void log(String level, String message) {
+        try {
+            LogLevel currentLevel = LogLevel.valueOf(level.toUpperCase());
+
+            // Print log to console
+            System.out.printf("[%s] [%s] %s%n", LocalDateTime.now(), level, message);
+
+            // Write to file only if log level is met or surpassed
+            if (currentLevel.ordinal() >= logLevel.ordinal()) {
+                try (PrintWriter out = new PrintWriter(new FileWriter(LOG_FILE, true))) {
+                    out.printf("[%s] [%s] %s%n", LocalDateTime.now(), level, message);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to write log: " + e.getMessage());
+        }
     }
 }

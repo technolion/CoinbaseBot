@@ -12,14 +12,13 @@ public class Config {
     private String apiSecret;
     private String portfolioId;
     private List<String> coins;
-
-    // New configurable conditions
     private double purchaseDropPercent;
     private double sellRisePercent;
     private int sellAfterHours;
     private double averageDownDropPercent;
     private int maxHeldCoins;
     private double useFundsPortionPerTrade;
+    private String logLevel;
 
     // Getters
     public String getApiKey() {
@@ -62,6 +61,10 @@ public class Config {
         return useFundsPortionPerTrade;
     }
 
+    public String getLogLevel() {
+        return logLevel;
+    }
+
     // Load configuration from JSON file
     public static Config loadConfig(String filePath) throws Exception {
         String content = new String(Files.readAllBytes(Paths.get(filePath)));
@@ -79,6 +82,7 @@ public class Config {
         config.averageDownDropPercent = json.getDouble("averageDownDropPercent");
         config.maxHeldCoins = json.getInt("maxHeldCoins");
         config.useFundsPortionPerTrade = json.getDouble("useFundsPortionPerTrade");
+        config.logLevel = json.getString("logLevel").toUpperCase();
         return config;
     }
 }
