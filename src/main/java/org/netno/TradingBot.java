@@ -156,9 +156,9 @@ public class TradingBot {
                         coin, currentPrice, trailingStopLoss));
                 sellCoin(coin, tradingPair, heldAmount);
                 return;
-            } else if (profitLevelIndex > 0 && currentPrice < previousProfitLevel) {
-                log("INFO", String.format("Selling %s due to profit drop. Current: %.6f, Previous Profit Level: %.6f",
-                        coin, currentPrice, previousProfitLevel));
+            } else if (profitLevelIndex > 0 && currentPrice < previousProfitLevel * 0.999) { // Allow 0.1% drop
+                log("INFO", String.format("Selling %s due to profit drop. Current: %.6f, Allowed Drop: %.6f",
+                        coin, currentPrice, previousProfitLevel * 0.999));
                 sellCoin(coin, tradingPair, heldAmount);
                 return;
             }
