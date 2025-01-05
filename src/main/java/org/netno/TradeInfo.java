@@ -7,13 +7,13 @@ import java.time.LocalDateTime;
 
 public class TradeInfo {
 
-    private double purchasePrice;           // Average purchase price
-    private double amount;                  // Amount of coins held
-    private LocalDateTime purchaseDate;     // Date of purchase
-    private double highestPrice;            // Highest price observed
-    private double trailingStopLoss;        // Current trailing stop-loss price
-    private int profitLevelIndex;           // Index of the last reached profit level
-    private boolean averagedDown;           // Whether the coin was averaged down
+    private double purchasePrice; // Average purchase price
+    private double amount; // Amount of coins held
+    private LocalDateTime purchaseDate; // Date of purchase
+    private double highestPrice; // Highest price observed
+    private double trailingStopLoss; // Current trailing stop-loss price
+    private int profitLevelIndex; // Index of the last reached profit level
+    private boolean averagedDown; // Whether the coin was averaged down
 
     // Constructor with parameters for JSON deserialization
     @JsonCreator
@@ -32,18 +32,6 @@ public class TradeInfo {
         this.trailingStopLoss = trailingStopLoss;
         this.profitLevelIndex = profitLevelIndex;
         this.averagedDown = averagedDown;
-    }
-
-    // Constructor for new purchases
-    public TradeInfo(double purchasePrice, double amount, LocalDateTime purchaseDate,
-                     double highestPrice, double trailingStopLoss) {
-        this.purchasePrice = purchasePrice;
-        this.amount = amount;
-        this.purchaseDate = purchaseDate;
-        this.highestPrice = highestPrice;
-        this.trailingStopLoss = trailingStopLoss;
-        this.profitLevelIndex = 0;  // Start with the first profit level
-        this.averagedDown = false; // Default to not averaged down
     }
 
     // Getter methods
@@ -67,12 +55,28 @@ public class TradeInfo {
         return trailingStopLoss;
     }
 
+    public void setTrailingStopLoss(double newStopLoss) {
+        this.trailingStopLoss = newStopLoss;
+    }
+
     public int getProfitLevelIndex() {
         return profitLevelIndex;
     }
 
-    public boolean hasAveragedDown() {
+    public void setProfitLevelIndex(int newIndex) {
+        profitLevelIndex = newIndex;
+    }
+
+    public boolean getAveragedDown() {
         return averagedDown;
+    }
+
+    public void setAveragedDown(boolean averagedDown) {
+        this.averagedDown = averagedDown;
+    }
+
+    public boolean hasAveragedDown() {
+        return getAveragedDown();
     }
 
     // Update purchase info for averaging down
@@ -90,18 +94,4 @@ public class TradeInfo {
         }
     }
 
-    // Increment profit level index
-    public void setProfitLevelIndex(int newIndex) {
-        profitLevelIndex = newIndex;
-    }
-
-    // Set averaged down flag
-    public void setAveragedDown(boolean averagedDown) {
-        this.averagedDown = averagedDown;
-    }
-
-    // Set a new trailing stop-loss manually
-    public void setTrailingStopLoss(double newStopLoss) {
-        this.trailingStopLoss = newStopLoss;
-    }
 }

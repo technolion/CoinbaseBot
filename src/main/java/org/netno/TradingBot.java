@@ -116,8 +116,9 @@ public class TradingBot {
 
             // Display current status of the coin
             log("DEBUG", String.format(
-                    "Status for %s: Held Amount: %.6f, Purchase Price: %.6f, Current Price: %.6f, Highest Price: %.6f, Stop-Loss: %.4f, Difference: %.6f%%",
-                    coin, heldAmount, purchasePrice, currentPrice, highestPrice, trailingStopLoss, priceDifference));
+                    "Status for %s: Held Amount: %.6f, Purchase Price: %.6f, Current Price: %.6f, Highest Price: %.6f, Stop-Loss: %.6f, Difference: %.6f%%, Averaged Down: %b",
+                    coin, heldAmount, purchasePrice, currentPrice, highestPrice, trailingStopLoss, priceDifference,
+                    tradeInfo.hasAveragedDown()));
 
             // 1. Average Down Logic (Only Once Per Coin)
             boolean averageDownCondition = !hasAveragedDown &&
@@ -267,13 +268,13 @@ public class TradingBot {
     private void sellCoin(String coin, String tradingPair, double amount) throws Exception {
         // Use the exact amount from purchase history without rounding
         String exactSize = Double.toString(amount);
-
+    
         // Create the OrderConfiguration using baseSize
         OrderConfiguration config = new OrderConfiguration();
         config.setMarketMarketIoc(new MarketIoc.Builder()
                 .baseSize(exactSize) // Use exact amount
                 .build());
-
+    
         // Build the order request
         CreateOrderRequest orderRequest = new CreateOrderRequest.Builder()
                 .clientOrderId(LocalDateTime.now().toString())
@@ -281,12 +282,27 @@ public class TradingBot {
                 .side("SELL")
                 .orderConfiguration(config)
                 .build();
-
+    
+        // Get the current price for profit/loss calculation
+        double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
+    
+        // Retrieve the purchase price for profit calculation
+        TradeInfo tradeInfo = purchaseHistory.get(coin);
+        double purchasePrice = tradeInfo.getPurchasePrice();
+    
+        // Calculate profit or loss in USDC
+        double totalPurchaseValue = tradeInfo.getAmount() * purchasePrice;
+        double totalSellValue = amount * currentPrice;
+        double profitOrLoss = totalSellValue - totalPurchaseValue;
+    
         // Execute the order
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
-            log("INFO", String.format("Sold %s coins of %s. Order ID: %s", exactSize, coin,
-                    orderResponse.getSuccessResponse().getOrderId()));
+            log("INFO", String.format(
+                    "Sold %s coins of %s. Order ID: %s, Profit/Loss: %.6f USDC",
+                    exactSize, coin, orderResponse.getSuccessResponse().getOrderId(), profitOrLoss));
+    
+            // Remove the coin from purchase history
             purchaseHistory.remove(coin);
             saveAssets();
         } else {
