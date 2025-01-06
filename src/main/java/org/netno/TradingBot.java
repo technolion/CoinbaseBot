@@ -40,6 +40,7 @@ public class TradingBot {
     private final List<String> coinsToTrade;
     private final double purchaseDropPercent;
     private final double averageDownDropPercent;
+    private final double allowedDropPercent;
     private final int maxHeldCoins;
     private final double useFundsPortionPerTrade;
     private final double trailingStopLossPercent; // Stop-loss percentage
@@ -55,6 +56,7 @@ public class TradingBot {
         this.coinsToTrade = config.getCoins();
         this.purchaseDropPercent = config.getPurchaseDropPercent();
         this.averageDownDropPercent = config.getAverageDownDropPercent();
+        this.allowedDropPercent = config.getAllowedDropPercent();
         this.maxHeldCoins = config.getMaxHeldCoins();
         this.useFundsPortionPerTrade = config.getUseFundsPortionPerTrade();
         this.trailingStopLossPercent = config.getTrailingStopLossPercent();
@@ -83,7 +85,7 @@ public class TradingBot {
                     log("ERROR", "Error during trading loop: " + e.getMessage());
                 }
             }
-        }, 0, 60000); // Initial delay 0ms, repeat every 60000ms (1 minute)
+        }, 0, 30000); // Initial delay 0ms, repeat every 30000ms (30 seconds)
     }
 
     public void executeTrade(String coin) throws Exception {
@@ -92,7 +94,7 @@ public class TradingBot {
         // Retrieve the current USDC balance before making a decision
         double usdcBalance = marketDataFetcher.getUsdcBalance();
 
-        double priceChange = marketDataFetcher.get24hPriceChangePercentage(tradingPair);
+        double priceChangePercentage = marketDataFetcher.get24hPriceChangePercentage(tradingPair);
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
 
         // Check if the coin is already in the purchase history
@@ -124,8 +126,8 @@ public class TradingBot {
             }
 
             // 1. Average Down Logic (Only Once Per Coin)
-            boolean averageDownCondition = !hasAveragedDown &&
-                    currentPrice <= purchasePrice * (1 + (averageDownDropPercent / 100.0));
+            double averageDownDropPrice = purchasePrice - (purchasePrice / 100 * averageDownDropPercent);
+            boolean averageDownCondition = !hasAveragedDown && currentPrice <= averageDownDropPrice;
             if (averageDownCondition) {
                 log("INFO", String.format("Averaging down for %s at %.6f. Current Stop-Loss: %.6f",
                         coin, currentPrice, trailingStopLoss));
@@ -151,18 +153,19 @@ public class TradingBot {
             }
 
             // 3. Stop-Loss or Profit Drop Handling
-            double previousProfitLevel = profitLevelIndex > 0
+            double previousProfitLevelPrice = profitLevelIndex > 0
                     ? purchasePrice * (1 + profitLevels.get(profitLevelIndex - 1) / 100.0)
                     : purchasePrice;
+            double allowedDropPrice = previousProfitLevelPrice - (previousProfitLevelPrice / 100 * allowedDropPercent);
 
             if (currentPrice < trailingStopLoss) {
                 log("INFO", String.format("Selling %s due to stop-loss. Current: %.6f, Stop-Loss: %.6f",
                         coin, currentPrice, trailingStopLoss));
                 sellCoin(coin, tradingPair, heldAmount);
                 return;
-            } else if (profitLevelIndex > 0 && currentPrice < previousProfitLevel * 0.995) { // Allow 0.5% drop
+            } else if (profitLevelIndex > 0 && currentPrice < allowedDropPrice) { // Allow price to drop a bit before we sell
                 log("INFO", String.format("Selling %s due to profit drop. Current: %.6f, Allowed Drop: %.6f",
-                        coin, currentPrice, previousProfitLevel * 0.999));
+                        coin, currentPrice, allowedDropPrice));
                 sellCoin(coin, tradingPair, heldAmount);
                 return;
             }
@@ -178,8 +181,8 @@ public class TradingBot {
                 return; // Skip the BUY operation if limit is reached
             }
 
-            log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin, priceChange));
-            if (priceChange <= purchaseDropPercent) {
+            log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin, priceChangePercentage));
+            if (priceChangePercentage <= (purchaseDropPercent * -1)) {
                 double fundsToSpend = usdcBalance * useFundsPortionPerTrade;
                 log("INFO", String.format("Buying %s for %.6f USDC at %.6f per unit.",
                         coin, fundsToSpend, currentPrice));
