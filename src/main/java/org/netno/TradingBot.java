@@ -92,7 +92,7 @@ public class TradingBot {
         // Retrieve the current USDC balance before making a decision
         double usdcBalance = marketDataFetcher.getUsdcBalance();
 
-        double priceChange = marketDataFetcher.get24hPriceChange(tradingPair);
+        double priceChange = marketDataFetcher.get24hPriceChangePercentage(tradingPair);
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
 
         // Check if the coin is already in the purchase history
@@ -116,9 +116,12 @@ public class TradingBot {
 
             // Display current status of the coin
             log("DEBUG", String.format(
-                    "Status for %s: Held Amount: %.6f, Purchase Price: %.6f, Current Price: %.6f, Highest Price: %.6f, Stop-Loss: %.6f, Difference: %.6f%%, Averaged Down: %b",
+                    "Status for %s: Held Amount: %.6f, Purchase Price: %.6f, Current Price: %.6f, Highest Price: %.6f, Stop-Loss: %.6f, Difference: %.2f%%, Averaged Down: %b",
                     coin, heldAmount, purchasePrice, currentPrice, highestPrice, trailingStopLoss, priceDifference,
                     tradeInfo.hasAveragedDown()));
+            if(profitLevelIndex > 0) {
+                log("DEBUG", String.format("YEAH! profit level %s reached!", profitLevelIndex));
+            }
 
             // 1. Average Down Logic (Only Once Per Coin)
             boolean averageDownCondition = !hasAveragedDown &&
@@ -141,7 +144,7 @@ public class TradingBot {
                     currentPrice >= purchasePrice * (1 + profitLevels.get(profitLevelIndex) / 100.0)) {
                 // Move to the next profit level
                 tradeInfo.setProfitLevelIndex(profitLevelIndex + 1);
-                log("INFO", String.format("Reached profit level %d (%.6f%%) for %s. Waiting for next level...",
+                log("INFO", String.format("Reached profit level %d (%.2f%%) for %s. Waiting for next level...",
                         profitLevelIndex + 1, profitLevels.get(profitLevelIndex), coin));
                 saveAssets(); // Save changes
                 return; // Skip further processing
@@ -157,7 +160,7 @@ public class TradingBot {
                         coin, currentPrice, trailingStopLoss));
                 sellCoin(coin, tradingPair, heldAmount);
                 return;
-            } else if (profitLevelIndex > 0 && currentPrice < previousProfitLevel * 0.999) { // Allow 0.1% drop
+            } else if (profitLevelIndex > 0 && currentPrice < previousProfitLevel * 0.995) { // Allow 0.5% drop
                 log("INFO", String.format("Selling %s due to profit drop. Current: %.6f, Allowed Drop: %.6f",
                         coin, currentPrice, previousProfitLevel * 0.999));
                 sellCoin(coin, tradingPair, heldAmount);
@@ -175,7 +178,7 @@ public class TradingBot {
                 return; // Skip the BUY operation if limit is reached
             }
 
-            log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.6f%%", coin, priceChange));
+            log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin, priceChange));
             if (priceChange <= purchaseDropPercent) {
                 double fundsToSpend = usdcBalance * useFundsPortionPerTrade;
                 log("INFO", String.format("Buying %s for %.6f USDC at %.6f per unit.",
@@ -299,7 +302,7 @@ public class TradingBot {
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
             log("INFO", String.format(
-                    "Sold %s coins of %s. Order ID: %s, Profit/Loss: %.6f USDC",
+                    "Sold %s coins of %s. Order ID: %s, Profit/Loss: %.2f USDC",
                     exactSize, coin, orderResponse.getSuccessResponse().getOrderId(), profitOrLoss));
     
             // Remove the coin from purchase history

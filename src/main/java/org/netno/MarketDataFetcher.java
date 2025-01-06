@@ -45,7 +45,7 @@ public class MarketDataFetcher {
     }
 
     // Get 24h price change percentage
-    public double get24hPriceChange(String tradingPair) throws Exception {
+    public double get24hPriceChangePercentage(String tradingPair) throws Exception {
         GetProductRequest request = new GetProductRequest.Builder()
                 .productId(tradingPair)
                 .build();
