@@ -20,6 +20,7 @@ public class Config {
     private String logLevel;
     private double trailingStopLossPercent;
     private List<Double> profitLevels;
+    private List<Double> averageDownSteps;
 
     // Getters
     public String getApiKey() {
@@ -65,9 +66,13 @@ public class Config {
     public double getTrailingStopLossPercent() {
         return trailingStopLossPercent;
     }
-    
+
     public List<Double> getProfitLevels() {
         return profitLevels;
+    }
+
+    public List<Double> getAverageDownSteps() {
+        return averageDownSteps;
     }
 
     // Load configuration from JSON file
@@ -90,6 +95,9 @@ public class Config {
         config.trailingStopLossPercent = json.getDouble("trailingStopLossPercent");
         config.profitLevels = json.getJSONArray("profitLevels").toList().stream()
                 .map(obj -> Double.valueOf(obj.toString()))
+                .collect(Collectors.toList());
+        config.averageDownSteps = json.getJSONArray("averageDownSteps").toList().stream()
+                .map(val -> Double.parseDouble(val.toString()))
                 .collect(Collectors.toList());
         return config;
     }

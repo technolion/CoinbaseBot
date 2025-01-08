@@ -13,7 +13,7 @@ public class TradeInfo {
     private double highestPrice; // Highest price observed
     private double trailingStopLoss; // Current trailing stop-loss price
     private int profitLevelIndex; // Index of the last reached profit level
-    private boolean averagedDown; // Whether the coin was averaged down
+    private int averageDownStepIndex;
 
     // Constructor with parameters for JSON deserialization
     @JsonCreator
@@ -24,14 +24,14 @@ public class TradeInfo {
             @JsonProperty("highestPrice") double highestPrice,
             @JsonProperty("trailingStopLoss") double trailingStopLoss,
             @JsonProperty("profitLevelIndex") int profitLevelIndex,
-            @JsonProperty("averagedDown") boolean averagedDown) {
+            @JsonProperty("averageDownStepIndex") Integer averageDownStepIndex) {
         this.purchasePrice = purchasePrice;
         this.amount = amount;
         this.purchaseDate = purchaseDate;
         this.highestPrice = highestPrice;
         this.trailingStopLoss = trailingStopLoss;
         this.profitLevelIndex = profitLevelIndex;
-        this.averagedDown = averagedDown;
+        this.averageDownStepIndex = (averageDownStepIndex != null) ? averageDownStepIndex : 0;
     }
 
     // Getter methods
@@ -67,16 +67,12 @@ public class TradeInfo {
         profitLevelIndex = newIndex;
     }
 
-    public boolean getAveragedDown() {
-        return averagedDown;
+    public int getAverageDownStepIndex() {
+        return averageDownStepIndex;
     }
-
-    public void setAveragedDown(boolean averagedDown) {
-        this.averagedDown = averagedDown;
-    }
-
-    public boolean hasAveragedDown() {
-        return getAveragedDown();
+    
+    public void setAverageDownStepIndex(int index) {
+        this.averageDownStepIndex = index;
     }
 
     // Update purchase info for averaging down
