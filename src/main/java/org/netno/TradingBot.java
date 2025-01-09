@@ -100,8 +100,10 @@ public class TradingBot {
             public void run() {
                 try {
                     log("DEBUG", "---- CHECKING COINS ----");
+                    // Retrieve the current USDC balance before making a decision
+                    double usdcBalance = marketDataFetcher.getUsdcBalance();
                     for (String coin : coinsToTrade) {
-                        executeTrade(coin); // Process each coin
+                        executeTrade(coin, usdcBalance); // Process each coin
                     }
                 } catch (Exception e) {
                     log("ERROR", "Error during trading loop: " + e.getMessage());
@@ -110,26 +112,15 @@ public class TradingBot {
         }, 0, 30000); // Initial delay 0ms, repeat every 30000ms (30 seconds)
     }
 
-    public void executeTrade(String coin) throws Exception {
+    public void executeTrade(String coin, double usdcBalance) throws Exception {
         String tradingPair = coin + "-USDC";
-
-        // Retrieve the current USDC balance before making a decision
-        double usdcBalance = marketDataFetcher.getUsdcBalance();
-
-        double priceChangePercentage = marketDataFetcher.get24hPriceChangePercentage(tradingPair);
-        double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
-
-        // Fetch precision requirement for the trading pair
-        double precision = marketDataFetcher.getBasePrecision(tradingPair);
-
-        // Calculate the number of decimal places based on the precision value
-        int decimalPlaces = BigDecimal.valueOf(precision)
-                .stripTrailingZeros()
-                .scale();
 
         // Check if the coin is already in the purchase history
         if (purchaseHistory.containsKey(coin)) {
             // Existing coin - handle sell or average down
+
+            double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
+
             TradeInfo tradeInfo = purchaseHistory.get(coin);
             double purchasePrice = tradeInfo.getPurchasePrice();
             double heldAmount = tradeInfo.getAmount();
@@ -140,7 +131,7 @@ public class TradingBot {
             int profitLevelIndex = tradeInfo.getProfitLevelIndex();
 
             // Update trailing stop-loss based on price movement
-            tradeInfo.updateStopLoss(currentPrice, trailingStopLossPercent, decimalPlaces);
+            tradeInfo.updateStopLoss(currentPrice, trailingStopLossPercent);
 
             // Calculate percentage difference between current price and purchase price
             double priceDifference = ((currentPrice - purchasePrice) / purchasePrice) * 100;
@@ -171,7 +162,7 @@ public class TradingBot {
                         ? (heldAmount * currentPrice)
                         : usdcBalance * useFundsPortionPerTrade;
 
-                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true, decimalPlaces);
+                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
 
                 // Move to the next step
                 tradeInfo.setAverageDownStepIndex(tradeInfo.getAverageDownStepIndex() + 1);
@@ -220,22 +211,34 @@ public class TradingBot {
                 return; // Skip the BUY operation if limit is reached
             }
 
+            double priceChangePercentage = marketDataFetcher.get24hPriceChangePercentage(tradingPair);
+            double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
+
             log("DEBUG",
                     String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin, priceChangePercentage));
             if (priceChangePercentage <= (purchaseDropPercent * -1)) {
                 double fundsToSpend = usdcBalance * useFundsPortionPerTrade;
                 log("INFO", String.format("Buying %s for %.6f USDC at %.6f per unit.",
                         coin, fundsToSpend, currentPrice));
-                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false, decimalPlaces); // Initial buy
+                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false); // Initial buy
             } else {
                 log("DEBUG", String.format("No significant price drop for %s. Skipping BUY.", coin));
             }
         }
     }
 
-    private void buyCoin(String coin, String tradingPair, double amountToSpend, double currentPrice, boolean update, int decimalPlaces)
+    private void buyCoin(String coin, String tradingPair, double amountToSpend, double currentPrice, boolean update)
             throws Exception {
         
+
+        // Fetch precision requirement for the trading pair
+        double precision = marketDataFetcher.getBasePrecision(tradingPair);
+
+        // Calculate the number of decimal places based on the precision value
+        int decimalPlaces = BigDecimal.valueOf(precision)
+                .stripTrailingZeros()
+                .scale();
+
 
         // Calculate how many coins can be bought for the USD amount
         double amountToBuy = amountToSpend / currentPrice;
@@ -271,7 +274,7 @@ public class TradingBot {
                 TradeInfo tradeInfo = purchaseHistory.get(coin);
                 if (tradeInfo != null) {
                     // Update purchase price and amount
-                    tradeInfo.updatePurchase(currentPrice, Double.parseDouble(roundedBaseSize), decimalPlaces);
+                    tradeInfo.updatePurchase(currentPrice, Double.parseDouble(roundedBaseSize));
 
                     // Update stop-loss based on the new average purchase price
                     double updatedStopLoss = tradeInfo.getPurchasePrice() * (1 - trailingStopLossPercent / 100.0);
@@ -289,7 +292,8 @@ public class TradingBot {
                                 currentPrice,
                                 initialStopLoss,
                                 0,
-                                0));
+                                0,
+                                decimalPlaces));
                 log("INFO", String.format("Initial stop-loss for %s set to %.6f", coin, initialStopLoss));
             }
 

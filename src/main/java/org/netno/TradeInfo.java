@@ -16,6 +16,7 @@ public class TradeInfo {
     private double trailingStopLoss; // Current trailing stop-loss price
     private int profitLevelIndex; // Index of the last reached profit level
     private int averageDownStepIndex; // Index of the last reached average down step
+    private int decimalPlaces; //number of places after the decimal point for the coin
 
     // Constructor with parameters for JSON deserialization
     @JsonCreator
@@ -26,7 +27,8 @@ public class TradeInfo {
             @JsonProperty("highestPrice") double highestPrice,
             @JsonProperty("trailingStopLoss") double trailingStopLoss,
             @JsonProperty("profitLevelIndex") int profitLevelIndex,
-            @JsonProperty("averageDownStepIndex") Integer averageDownStepIndex) {
+            @JsonProperty("averageDownStepIndex") Integer averageDownStepIndex,
+            @JsonProperty("decimalPlaces") Integer decimalPlaces) {
         this.purchasePrice = purchasePrice;
         this.amount = amount;
         this.purchaseDate = purchaseDate;
@@ -34,6 +36,7 @@ public class TradeInfo {
         this.trailingStopLoss = trailingStopLoss;
         this.profitLevelIndex = profitLevelIndex;
         this.averageDownStepIndex = (averageDownStepIndex != null) ? averageDownStepIndex : 0;
+        this.decimalPlaces = (decimalPlaces != null) ? decimalPlaces : 99;
     }
 
     // Getter methods
@@ -77,8 +80,16 @@ public class TradeInfo {
         this.averageDownStepIndex = index;
     }
 
+    public int getDecimalPlaces() {
+        return decimalPlaces;
+    }
+
+    public void setDecimalPlaces(int places) {
+        this.decimalPlaces = places;
+    }
+
     // Update purchase info for averaging down
-    public void updatePurchase(double newPrice, double additionalAmount, int decimalPlaces) {
+    public void updatePurchase(double newPrice, double additionalAmount) {
         double totalValue = (purchasePrice * amount) + (newPrice * additionalAmount);
         amount += additionalAmount;
         String newAveragePrice = BigDecimal.valueOf(totalValue / amount)
@@ -87,7 +98,7 @@ public class TradeInfo {
     }
 
     // Update stop-loss based on current price
-    public void updateStopLoss(double currentPrice, double trailingStopLossPercent, int decimalPlaces) {
+    public void updateStopLoss(double currentPrice, double trailingStopLossPercent) {
         if (currentPrice > highestPrice) {
             highestPrice = currentPrice; // Update the highest price seen
             trailingStopLoss = highestPrice * (1 - trailingStopLossPercent / 100.0); // Adjust stop-loss
