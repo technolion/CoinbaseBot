@@ -3,6 +3,8 @@ package org.netno;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 public class TradeInfo {
@@ -13,7 +15,7 @@ public class TradeInfo {
     private double highestPrice; // Highest price observed
     private double trailingStopLoss; // Current trailing stop-loss price
     private int profitLevelIndex; // Index of the last reached profit level
-    private int averageDownStepIndex;
+    private int averageDownStepIndex; // Index of the last reached average down step
 
     // Constructor with parameters for JSON deserialization
     @JsonCreator
@@ -70,23 +72,28 @@ public class TradeInfo {
     public int getAverageDownStepIndex() {
         return averageDownStepIndex;
     }
-    
+
     public void setAverageDownStepIndex(int index) {
         this.averageDownStepIndex = index;
     }
 
     // Update purchase info for averaging down
-    public void updatePurchase(double newPrice, double additionalAmount) {
+    public void updatePurchase(double newPrice, double additionalAmount, int decimalPlaces) {
         double totalValue = (purchasePrice * amount) + (newPrice * additionalAmount);
         amount += additionalAmount;
-        purchasePrice = totalValue / amount;
+        String newAveragePrice = BigDecimal.valueOf(totalValue / amount)
+                .setScale(decimalPlaces, RoundingMode.HALF_DOWN).toString();
+        purchasePrice = Double.parseDouble(newAveragePrice);
     }
 
     // Update stop-loss based on current price
-    public void updateStopLoss(double currentPrice, double trailingStopLossPercent) {
+    public void updateStopLoss(double currentPrice, double trailingStopLossPercent, int decimalPlaces) {
         if (currentPrice > highestPrice) {
             highestPrice = currentPrice; // Update the highest price seen
             trailingStopLoss = highestPrice * (1 - trailingStopLossPercent / 100.0); // Adjust stop-loss
+            String newTrailingStopLoss = BigDecimal.valueOf(highestPrice * (1 - trailingStopLossPercent / 100.0))
+                    .setScale(decimalPlaces, RoundingMode.HALF_DOWN).toString();
+            trailingStopLoss = Double.parseDouble(newTrailingStopLoss);
         }
     }
 

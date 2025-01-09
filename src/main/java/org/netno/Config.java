@@ -13,8 +13,6 @@ public class Config {
     private String portfolioId;
     private List<String> coins;
     private double purchaseDropPercent;
-    private double averageDownDropPercent;
-    private double allowedDropPercent;
     private int maxHeldCoins;
     private double useFundsPortionPerTrade;
     private String logLevel;
@@ -41,14 +39,6 @@ public class Config {
 
     public double getPurchaseDropPercent() {
         return purchaseDropPercent;
-    }
-
-    public double getAverageDownDropPercent() {
-        return averageDownDropPercent;
-    }
-
-    public double getAllowedDropPercent() {
-        return allowedDropPercent;
     }
 
     public int getMaxHeldCoins() {
@@ -87,8 +77,6 @@ public class Config {
                 .map(Object::toString)
                 .collect(Collectors.toList());
         config.purchaseDropPercent = json.getDouble("purchaseDropPercent");
-        config.averageDownDropPercent = json.getDouble("averageDownDropPercent");
-        config.allowedDropPercent = json.getDouble("allowedDropPercent");
         config.maxHeldCoins = json.getInt("maxHeldCoins");
         config.useFundsPortionPerTrade = json.getDouble("useFundsPortionPerTrade");
         config.logLevel = json.getString("logLevel").toUpperCase();
