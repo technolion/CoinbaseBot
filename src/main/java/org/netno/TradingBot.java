@@ -91,6 +91,10 @@ public class TradingBot {
         return purchaseHistory;
     }
 
+    int getNumberOfHeldCoins() {
+        return purchaseHistory.size();
+    }
+
     public void startTrading() {
         log("INFO", "Starting trading loop...");
 
@@ -158,8 +162,8 @@ public class TradingBot {
 
                 double fundsToSpend = usdcBalance >= (heldAmount * currentPrice)
                         ? (heldAmount * currentPrice)
-                        : usdcBalance * useFundsPortionPerTrade;
-
+                        : getPurchaseMoney(usdcBalance, useFundsPortionPerTrade, getNumberOfHeldCoins());
+                
                 buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
 
                 // Move to the next step
@@ -235,7 +239,7 @@ public class TradingBot {
             log("DEBUG",
                     String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin, priceChangePercentage));
             if (priceChangePercentage <= (purchaseDropPercent * -1)) {
-                double fundsToSpend = usdcBalance * useFundsPortionPerTrade;
+                double fundsToSpend = getPurchaseMoney(usdcBalance, useFundsPortionPerTrade, getNumberOfHeldCoins());
                 log("INFO", String.format("Buying %s for %.6f USDC at %.6f per unit.",
                         coin, fundsToSpend, currentPrice));
                 buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false); // Initial buy
@@ -365,6 +369,11 @@ public class TradingBot {
             log("ERROR", String.format("Selling %s failed!", coin));
             log("ERROR", String.format(orderResponse.getErrorResponse().getError()));
         }
+    }
+
+    double getPurchaseMoney(double funds, double useFundsPortionPerTrade, int numberOfCoinsHeld) {
+        double denominator = (1 / useFundsPortionPerTrade) - numberOfCoinsHeld;
+        return funds / denominator;
     }
 
     // Save purchase history to file

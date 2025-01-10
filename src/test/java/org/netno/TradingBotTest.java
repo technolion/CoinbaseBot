@@ -74,7 +74,6 @@ class TradingBotTest {
         assertEquals(tradeInfo.getTrailingStopLoss(), 0.45);
     }
 
-    // manually tested
     @Test
     void testBuySkippedDueToNoDrop() throws Exception {
         // Change price change to -4% (doesn't meet 5% drop condition)
@@ -87,7 +86,6 @@ class TradingBotTest {
         assertFalse(purchaseHistoryMock.containsKey("TEST"));
     }
 
-    // manually tested
     @Test
     void testAverageDownNotYetAveragedDown() throws Exception {
         // Add an existing purchase
@@ -103,11 +101,10 @@ class TradingBotTest {
         // Verify the average down step is updated
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
         assertEquals(1, tradeInfo.getAverageDownStepIndex()); // Step index incremented
-        assertEquals(tradeInfo.getPurchasePrice(), 0.495);
-        assertEquals(tradeInfo.getTrailingStopLoss(), 0.4455);
+        assertEquals(tradeInfo.getPurchasePrice(), 0.4945);
+        assertEquals(tradeInfo.getTrailingStopLoss(), 0.44505);
     }
 
-    // manually tested
     @Test
     void testAverageDownSecondTime() throws Exception {
         // Add an existing purchase
@@ -123,11 +120,10 @@ class TradingBotTest {
         // Verify the average down step is updated
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
         assertEquals(2, tradeInfo.getAverageDownStepIndex()); // Step index incremented
-        assertEquals(tradeInfo.getPurchasePrice(), 0.49);
-        assertEquals(tradeInfo.getTrailingStopLoss(), 0.441);
+        assertEquals(tradeInfo.getPurchasePrice(), 0.4895);
+        assertEquals(tradeInfo.getTrailingStopLoss(), 0.44055);
     }
 
-    // manually tested!
     @Test
     void testStopLossTriggered() throws Exception {
         // Add a purchase with stop-loss. Maximum average dow steps are reached
@@ -225,5 +221,27 @@ class TradingBotTest {
 
         // Verify the coin was not sold
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void testGetPurchaseMoney() throws Exception {
+        double money = bot.getPurchaseMoney(700, 0.1, 3);
+        assertEquals(100, money);
+        money = bot.getPurchaseMoney(1000, 0.1, 0);
+        assertEquals(100, money);
+        money = bot.getPurchaseMoney(1800, 0.1, 1);
+        assertEquals(200, money);
+    }
+
+    @Test
+    void testGetNumberOfHeldCoins() throws Exception {
+        // Add a purchase reaching profit levels
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 3));
+        // Add a purchase reaching profit levels
+        purchaseHistoryMock.put("TEST2", new TradeInfo(
+                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 3));
+        int heldCoins = bot.getNumberOfHeldCoins();
+        assertEquals(2, heldCoins);
     }
 }

@@ -93,7 +93,7 @@ public class TradeInfo {
         double totalValue = (purchasePrice * amount) + (newPrice * additionalAmount);
         amount += additionalAmount;
         String newAveragePrice = BigDecimal.valueOf(totalValue / amount)
-                .setScale(decimalPlaces, RoundingMode.HALF_DOWN).toString();
+                .setScale(6, RoundingMode.HALF_DOWN).toString();
         purchasePrice = Double.parseDouble(newAveragePrice);
     }
 
@@ -103,7 +103,7 @@ public class TradeInfo {
             highestPrice = currentPrice; // Update the highest price seen
             trailingStopLoss = highestPrice * (1 - trailingStopLossPercent / 100.0); // Adjust stop-loss
             String newTrailingStopLoss = BigDecimal.valueOf(highestPrice * (1 - trailingStopLossPercent / 100.0))
-                    .setScale(decimalPlaces, RoundingMode.HALF_DOWN).toString();
+                    .setScale(6, RoundingMode.HALF_DOWN).toString();
             trailingStopLoss = Double.parseDouble(newTrailingStopLoss);
         }
     }
