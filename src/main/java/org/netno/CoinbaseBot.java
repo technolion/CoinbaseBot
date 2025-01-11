@@ -79,6 +79,10 @@ public class CoinbaseBot {
         System.out.println("Starting trading loop...");
 
         TradingBot bot = new TradingBot(client, config);
-        bot.startTrading();
+        if(bot.initialized) {
+            bot.startTrading();
+        } else {
+            System.out.println("Failed to start trading!");
+        }
     }
 }

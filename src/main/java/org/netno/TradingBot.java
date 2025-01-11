@@ -47,6 +47,8 @@ public class TradingBot {
 
     private Map<String, TradeInfo> purchaseHistory;
 
+    public boolean initialized = false;
+
     public TradingBot(CoinbaseAdvancedClient client, Config config) {
         this.ordersService = CoinbaseAdvancedServiceFactory.createOrdersService(client);
         this.marketDataFetcher = new MarketDataFetcher(client, config.getPortfolioId());
@@ -60,10 +62,15 @@ public class TradingBot {
         this.profitLevels = config.getProfitLevels();
         this.averageDownSteps = config.getAverageDownSteps();
 
-        this.purchaseHistory = loadAssets();
+        try {
+            this.purchaseHistory = loadAssets();
+        } catch (Exception e) {
+            return;
+        }
         this.logLevel = LogLevel.valueOf(config.getLogLevel().toUpperCase());
         log("INFO", "TradingBot initialized.");
         log("INFO", String.format("Current cash: %s USDC.", usdcBalance));
+        initialized = true;
     }
 
     // for unit tests only
@@ -107,6 +114,7 @@ public class TradingBot {
                     log("DEBUG", "---- CHECKING COINS ----");
                     // Retrieve the current USDC balance before making a decision
                     double usdcBalance = marketDataFetcher.getUsdcBalance();
+                    log("DEBUG", String.format("Current cash: %s USDC.", usdcBalance));
                     for (String coin : coinsToTrade) {
                         executeTrade(coin, usdcBalance); // Process each coin
                     }
@@ -388,7 +396,7 @@ public class TradingBot {
     }
 
     // Load purchase history from file
-    private Map<String, TradeInfo> loadAssets() {
+    private Map<String, TradeInfo> loadAssets() throws Exception {
         try {
             File file = new File(ASSETS_FILE);
             if (file.exists()) {
@@ -399,6 +407,7 @@ public class TradingBot {
             }
         } catch (IOException e) {
             log("ERROR", String.format("Failed to load purchase history: " + e.getMessage()));
+            throw new Exception("Error when trying to load existing asset file!");
         }
         return new HashMap<>();
     }
