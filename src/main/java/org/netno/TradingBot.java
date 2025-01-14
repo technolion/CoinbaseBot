@@ -94,12 +94,26 @@ public class TradingBot {
         log("INFO", String.format("Current cash: %s USDC.", usdcBalance));
     }
 
-    public Map<String, TradeInfo> getPurchaseHistory() {
-        return purchaseHistory;
-    }
-
     int getNumberOfHeldCoins() {
         return purchaseHistory.size();
+    }
+
+    /**
+     * Calculates the total USDC value of all held coins.
+     * The value is based on the held amount multiplied by the average purchase
+     * price.
+     *
+     * @return The total USDC value of all held coins.
+     */
+    public double getTotalUsdcValueOfHeldCoins() {
+        double totalUsdcValue = 0.0;
+
+        for (Map.Entry<String, TradeInfo> entry : purchaseHistory.entrySet()) {
+            TradeInfo tradeInfo = entry.getValue();
+            double coinValue = tradeInfo.getAmount() * tradeInfo.getPurchasePrice();
+            totalUsdcValue += coinValue;
+        }
+        return totalUsdcValue;
     }
 
     public void startTrading() {
@@ -170,8 +184,8 @@ public class TradingBot {
 
                 double fundsToSpend = usdcBalance >= (heldAmount * currentPrice)
                         ? (heldAmount * currentPrice)
-                        : getPurchaseMoney(usdcBalance, useFundsPortionPerTrade, getNumberOfHeldCoins());
-                
+                        : getPurchaseMoney(usdcBalance, useFundsPortionPerTrade);
+
                 buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
 
                 // Move to the next step
@@ -247,7 +261,7 @@ public class TradingBot {
             log("DEBUG",
                     String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin, priceChangePercentage));
             if (priceChangePercentage <= (purchaseDropPercent * -1)) {
-                double fundsToSpend = getPurchaseMoney(usdcBalance, useFundsPortionPerTrade, getNumberOfHeldCoins());
+                double fundsToSpend = getPurchaseMoney(usdcBalance, useFundsPortionPerTrade);
                 log("INFO", String.format("Buying %s for %.6f USDC at %.6f per unit.",
                         coin, fundsToSpend, currentPrice));
                 buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false); // Initial buy
@@ -379,9 +393,13 @@ public class TradingBot {
         }
     }
 
-    double getPurchaseMoney(double funds, double useFundsPortionPerTrade, int numberOfCoinsHeld) {
-        double denominator = (1 / useFundsPortionPerTrade) - numberOfCoinsHeld;
-        return funds / denominator;
+    double getPurchaseMoney(double funds, double useFundsPortionPerTrade) {
+        double portfolioValue = funds + getTotalUsdcValueOfHeldCoins();
+        double purchaseMoney = portfolioValue * useFundsPortionPerTrade;
+        if (funds < purchaseMoney) {
+            purchaseMoney = funds;
+        }
+        return purchaseMoney;
     }
 
     // Save purchase history to file

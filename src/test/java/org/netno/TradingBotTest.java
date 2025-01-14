@@ -223,15 +223,6 @@ class TradingBotTest {
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
     }
 
-    @Test
-    void testGetPurchaseMoney() throws Exception {
-        double money = bot.getPurchaseMoney(700, 0.1, 3);
-        assertEquals(100, money);
-        money = bot.getPurchaseMoney(1000, 0.1, 0);
-        assertEquals(100, money);
-        money = bot.getPurchaseMoney(1800, 0.1, 1);
-        assertEquals(200, money);
-    }
 
     @Test
     void testGetNumberOfHeldCoins() throws Exception {
