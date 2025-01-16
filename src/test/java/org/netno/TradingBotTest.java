@@ -106,6 +106,22 @@ class TradingBotTest {
     }
 
     @Test
+    void testIncreaseStopLoss() throws Exception {
+        // Add an existing purchase
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now(), 0.51, 0.45, 0, 0, 3));
+
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.52);
+
+        // Execute trade
+        bot.executeTrade("TEST", 1000);
+
+        // Verify trailing stop loss has been increased
+        TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
+        assertEquals(0.468, tradeInfo.getTrailingStopLoss());
+    }
+
+    @Test
     void testAverageDownSecondTime() throws Exception {
         // Add an existing purchase
         purchaseHistoryMock.put("TEST", new TradeInfo(
@@ -234,5 +250,18 @@ class TradingBotTest {
                 0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 3));
         int heldCoins = bot.getNumberOfHeldCoins();
         assertEquals(2, heldCoins);
+    }
+
+    @Test
+    void testGetPurchaseMoney() throws Exception {
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 3));
+        purchaseHistoryMock.put("TEST2", new TradeInfo(
+                    0.80, 80, LocalDateTime.now(), 0.501, 0.45, 0, 0, 3));
+
+        when(marketDataFetcherMock.getUsdcBalance()).thenReturn(700.0);
+
+        double money = bot.getPurchaseMoney(700.0, 0.5);
+        assertEquals(407, money);
     }
 }
