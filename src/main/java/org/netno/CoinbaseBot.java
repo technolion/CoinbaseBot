@@ -79,8 +79,11 @@ public class CoinbaseBot {
         System.out.println("Starting trading loop...");
 
         TradingBot bot = new TradingBot(client, config);
-        if(bot.initialized) {
+        if (bot.initialized) {
             bot.startTrading();
+            WebServer webServer = new WebServer(bot);
+            webServer.start();
+            System.out.println("Web server started on http://localhost:8080");
         } else {
             System.out.println("Failed to start trading!");
         }

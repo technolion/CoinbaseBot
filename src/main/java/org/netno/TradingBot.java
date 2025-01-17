@@ -94,6 +94,14 @@ public class TradingBot {
         log("INFO", String.format("Current cash: %s USDC.", usdcBalance));
     }
 
+    public Map<String, TradeInfo> getPurchaseHistory() {
+        return purchaseHistory;
+    }
+    
+    public MarketDataFetcher getMarketDataFetcher() {
+        return marketDataFetcher;
+    }
+
     int getNumberOfHeldCoins() {
         return purchaseHistory.size();
     }
