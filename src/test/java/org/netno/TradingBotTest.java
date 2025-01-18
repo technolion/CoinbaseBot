@@ -18,24 +18,25 @@ class TradingBotTest {
 
     private TradingBot bot;
     private MarketDataFetcher marketDataFetcherMock;
-    private Config configMock;
     private Map<String, TradeInfo> purchaseHistoryMock;
 
     @BeforeEach
     void setUp() throws Exception {
         // Mock dependencies
         marketDataFetcherMock = mock(MarketDataFetcher.class);
-        configMock = mock(Config.class);
 
-        // Config Mock Setup
-        when(configMock.getCoins()).thenReturn(List.of("TEST"));
-        when(configMock.getPurchaseDropPercent()).thenReturn(5.0);
-        when(configMock.getMaxHeldCoins()).thenReturn(5);
-        when(configMock.getUseFundsPortionPerTrade()).thenReturn(0.2);
-        when(configMock.getTrailingStopLossPercent()).thenReturn(10.0);
-        when(configMock.getProfitLevels()).thenReturn(List.of(0.0, 2.0, 5.0, 10.0));
-        when(configMock.getAverageDownSteps()).thenReturn(List.of(0.0,2.0, 4.0, 6.0));
-        when(configMock.getLogLevel()).thenReturn("DEBUG");
+        Config testConfig = new Config();
+        testConfig.coins = List.of("TEST");
+        testConfig.purchaseDropPercent = 5.0;
+        testConfig.maxHeldCoins = 5;
+        testConfig.useFundsPortionPerTrade = 0.2;
+        testConfig.trailingStopLossPercent = 10.0;
+        testConfig.profitLevels = List.of(0.0, 2.0, 5.0, 10.0);
+        testConfig.averageDownSteps = List.of(0.0,2.0, 4.0, 6.0);
+        testConfig.minimumProfitLevelForRegularSale = 2;
+        testConfig.profitLevelForRecoverySale = 1;
+        testConfig.logLevel = "DEBUG";
+
 
         // Mock MarketDataFetcher
         when(marketDataFetcherMock.getUsdcBalance()).thenReturn(1000.0);
@@ -59,7 +60,7 @@ class TradingBotTest {
         when(ordersServiceMock.createOrder(any())).thenReturn(orderResponse);
 
         // Initialize TradingBot with mocks
-        bot = new TradingBot(ordersServiceMock, marketDataFetcherMock, configMock, purchaseHistoryMock);
+        bot = new TradingBot(ordersServiceMock, marketDataFetcherMock, testConfig, purchaseHistoryMock);
     }
 
     @Test
@@ -144,7 +145,7 @@ class TradingBotTest {
     void testStopLossTriggered() throws Exception {
         // Add a purchase with stop-loss. Maximum average dow steps are reached
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.55, 0.45, 0, configMock.getAverageDownSteps().size(), 3));
+                0.50, 100, LocalDateTime.now(), 0.55, 0.45, 0, 4, 3));
 
         // Simulate price drop below stop-loss
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.449);

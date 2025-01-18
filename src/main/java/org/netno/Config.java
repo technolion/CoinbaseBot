@@ -8,62 +8,21 @@ import java.util.stream.Collectors;
 import org.json.JSONObject;
 
 public class Config {
-    private String apiKey;
-    private String apiSecret;
-    private String portfolioId;
-    private List<String> coins;
-    private double purchaseDropPercent;
-    private int maxHeldCoins;
-    private double useFundsPortionPerTrade;
-    private String logLevel;
-    private double trailingStopLossPercent;
-    private List<Double> profitLevels;
-    private List<Double> averageDownSteps;
+    String apiKey;
+    String apiSecret;
+    String portfolioId;
+    List<String> coins;
+    double purchaseDropPercent;
+    int maxHeldCoins;
+    double useFundsPortionPerTrade;
+    String logLevel;
+    double trailingStopLossPercent;
+    List<Double> profitLevels;
+    List<Double> averageDownSteps;
+    int minimumProfitLevelForRegularSale;
+    int profitLevelForRecoverySale;
 
-    // Getters
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public String getApiSecret() {
-        return apiSecret;
-    }
-
-    public String getPortfolioId() {
-        return portfolioId;
-    }
-
-    public List<String> getCoins() {
-        return coins;
-    }
-
-    public double getPurchaseDropPercent() {
-        return purchaseDropPercent;
-    }
-
-    public int getMaxHeldCoins() {
-        return maxHeldCoins;
-    }
-
-    public double getUseFundsPortionPerTrade() {
-        return useFundsPortionPerTrade;
-    }
-
-    public String getLogLevel() {
-        return logLevel;
-    }
-
-    public double getTrailingStopLossPercent() {
-        return trailingStopLossPercent;
-    }
-
-    public List<Double> getProfitLevels() {
-        return profitLevels;
-    }
-
-    public List<Double> getAverageDownSteps() {
-        return averageDownSteps;
-    }
+    public Config(){};
 
     // Load configuration from JSON file
     public static Config loadConfig(String filePath) throws Exception {
@@ -87,6 +46,9 @@ public class Config {
         config.averageDownSteps = json.getJSONArray("averageDownSteps").toList().stream()
                 .map(val -> Double.parseDouble(val.toString()))
                 .collect(Collectors.toList());
+        config.minimumProfitLevelForRegularSale = json.getInt("minimumProfitLevelForRegularSale");
+        config.profitLevelForRecoverySale = json.getInt("profitLevelForRecoverySale");
         return config;
     }
+
 }

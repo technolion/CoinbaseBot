@@ -15,10 +15,10 @@ import java.util.List;
 
 public class WebServer {
 
-    private final TradingBot tradingBot;
+    private final TradingBot tb;
 
     public WebServer(TradingBot tradingBot) {
-        this.tradingBot = tradingBot;
+        this.tb = tradingBot;
     }
 
     public void start() throws IOException {
@@ -73,11 +73,11 @@ public class WebServer {
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-            Map<String, TradeInfo> purchaseHistory = tradingBot.getPurchaseHistory();
+            Map<String, TradeInfo> purchaseHistory = tb.getPurchaseHistory();
             purchaseHistory.forEach((coin, tradeInfo) -> {
                 double currentPrice;
                 try {
-                    currentPrice = tradingBot.getMarketDataFetcher().getCurrentPrice(coin + "-USDC");
+                    currentPrice = tb.getMarketDataFetcher().getCurrentPrice(coin + "-USDC");
                 } catch (Exception e) {
                     currentPrice = 0.0; // Fallback if fetching fails
                 }
@@ -86,9 +86,9 @@ public class WebServer {
                 double winLossUSDC = (currentPrice - tradeInfo.getPurchasePrice()) * tradeInfo.getAmount();
                 long daysHeld = ChronoUnit.DAYS.between(tradeInfo.getPurchaseDate(), LocalDateTime.now());
                 String profitLevel = String.format("%d (%.2f%%)", tradeInfo.getProfitLevelIndex(),
-                    tradingBot.getProfitLevels().get(tradeInfo.getProfitLevelIndex()));
+                    tb.config.profitLevels.get(tradeInfo.getProfitLevelIndex()));
                 String averageDownStep = String.format("%d (%.2f%%)", tradeInfo.getAverageDownStepIndex(),
-                    tradingBot.getAverageDownSteps().get(tradeInfo.getAverageDownStepIndex()));
+                    tb.config.averageDownSteps.get(tradeInfo.getAverageDownStepIndex()));
                 
                 html.append("<tr>");
                 html.append("<td>").append(coin).append("</td>");
@@ -111,7 +111,7 @@ public class WebServer {
             // Add Profit Levels Section
             html.append("<h2 style='text-align:center;'>Profit Levels</h2>");
             html.append("<ul style='width: 80%; margin: auto;'>");
-            List<Double> profitLevels = tradingBot.getProfitLevels();
+            List<Double> profitLevels = tb.config.profitLevels;
             for (int i = 0; i < profitLevels.size(); i++) {
                 html.append("<li>Level ").append(i).append(": ").append(profitLevels.get(i)).append("%</li>");
             }
@@ -120,7 +120,7 @@ public class WebServer {
             // Add Average Down Steps Section
             html.append("<h2 style='text-align:center;'>Average Down Levels</h2>");
             html.append("<ul style='width: 80%; margin: auto;'>");
-            List<Double> averageDownSteps = tradingBot.getAverageDownSteps();
+            List<Double> averageDownSteps = tb.config.averageDownSteps;
             for (int i = 0; i < averageDownSteps.size(); i++) {
                 html.append("<li>Step ").append(i).append(": ").append(averageDownSteps.get(i)).append("%</li>");
             }

@@ -37,6 +37,8 @@ you need a `config.json` file. I am using these values. Play with them and find 
   "trailingStopLossPercent": 12.0,
   "profitLevels": [0.0, 0.5, 2.5, 4.0, 5.5, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0],
   "averageDownSteps": [0.0, 2.0, 4.0, 6.0],
+  "minimumProfitLevelForRegularSale": 2,
+  "profitLevelForRecoverySale": 1,
   "logLevel": "INFO"
 }
 ```

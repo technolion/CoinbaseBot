@@ -58,8 +58,8 @@ public class CoinbaseBot {
 
             // Initialize the client
             JSONObject credentialsJson = new JSONObject();
-            credentialsJson.put("apiKeyName", config.getApiKey());
-            credentialsJson.put("privateKey", config.getApiSecret());
+            credentialsJson.put("apiKeyName", config.apiKey);
+            credentialsJson.put("privateKey", config.apiSecret);
             CoinbaseAdvancedCredentials credentials = new CoinbaseAdvancedCredentials(credentialsJson.toString());
             client = new CoinbaseAdvancedClient(credentials);
 
