@@ -34,7 +34,7 @@ class TradingBotTest {
         when(configMock.getUseFundsPortionPerTrade()).thenReturn(0.2);
         when(configMock.getTrailingStopLossPercent()).thenReturn(10.0);
         when(configMock.getProfitLevels()).thenReturn(List.of(0.0, 2.0, 5.0, 10.0));
-        when(configMock.getAverageDownSteps()).thenReturn(List.of(2.0, 4.0, 6.0, 8.0));
+        when(configMock.getAverageDownSteps()).thenReturn(List.of(0.0,2.0, 4.0, 6.0));
         when(configMock.getLogLevel()).thenReturn("DEBUG");
 
         // Mock MarketDataFetcher
@@ -225,6 +225,22 @@ class TradingBotTest {
 
     @Test
     void testProfitDropBelowPurchase() throws Exception {
+        // Add a purchase reaching profit levels
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 3));
+
+        // Simulate price drops below purchase price but above stop loss
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.499);
+
+        // Execute trade
+        bot.executeTrade("TEST", 1000);
+
+        // Verify the coin was not sold
+        assertTrue(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void holdingOnHighestAverageDownStep() throws Exception {
         // Add a purchase reaching profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(
                 0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 3));

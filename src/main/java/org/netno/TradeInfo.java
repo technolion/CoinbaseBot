@@ -9,14 +9,14 @@ import java.time.LocalDateTime;
 
 public class TradeInfo {
 
-    private double purchasePrice; // Average purchase price
-    private double amount; // Amount of coins held
-    private LocalDateTime purchaseDate; // Date of purchase
-    private double highestPrice; // Highest price observed
-    private double trailingStopLoss; // Current trailing stop-loss price
-    private int profitLevelIndex; // Index of the last reached profit level
-    private int averageDownStepIndex; // Index of the last reached average down step
-    private int decimalPlaces; //number of places after the decimal point for the coin
+    double purchasePrice; // Average purchase price
+    double amount; // Amount of coins held
+    LocalDateTime purchaseDate; // Date of purchase
+    double highestPrice; // Highest price observed
+    double trailingStopLoss; // Current trailing stop-loss price
+    int profitLevelIndex; // Index of the last reached profit level
+    int averageDownStepIndex; // Index of the last reached average down step
+    int decimalPlaces; //number of places after the decimal point for the coin
 
     // Constructor with parameters for JSON deserialization
     @JsonCreator
@@ -95,6 +95,14 @@ public class TradeInfo {
         String newAveragePrice = BigDecimal.valueOf(totalValue / amount)
                 .setScale(6, RoundingMode.HALF_DOWN).toString();
         purchasePrice = Double.parseDouble(newAveragePrice);
+    }
+
+    public void increaseAverageDown() {
+        averageDownStepIndex++;
+    }
+
+    public void increaseProfitLevel() {
+        profitLevelIndex++;
     }
 
     // Update stop-loss based on current price

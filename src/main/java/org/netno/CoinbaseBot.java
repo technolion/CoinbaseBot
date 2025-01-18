@@ -82,8 +82,11 @@ public class CoinbaseBot {
         if (bot.initialized) {
             bot.startTrading();
             WebServer webServer = new WebServer(bot);
-            webServer.start();
-            System.out.println("Web server started on http://localhost:8080");
+            try {
+                webServer.start();
+            } catch (Exception e) {
+                System.out.println("Failed to start web server: "+e.getLocalizedMessage());
+            }
         } else {
             System.out.println("Failed to start trading!");
         }
