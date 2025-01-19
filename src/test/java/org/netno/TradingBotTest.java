@@ -225,6 +225,40 @@ class TradingBotTest {
     }
 
     @Test
+    void testRecoverySale() throws Exception {
+        // Add a purchase reaching profit levels
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now(), 0.50, 0.45, 0, 3, 3));
+
+        // Simulate price reached first profit level
+        // we expect a recovery sale
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.511);
+
+        // Execute trade
+        bot.executeTrade("TEST", 1000);
+
+        // Verify the coin was sold
+        assertFalse(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void testNoRecoverySale() throws Exception {
+        // Add a purchase reaching profit levels
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now(), 0.50, 0.45, 0, 2, 3));
+
+        // Simulate price reached first profit level
+        // we don'r expect a recovery sale because the average down step was not the last possible one
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.511);
+
+        // Execute trade
+        bot.executeTrade("TEST", 1000);
+
+        // Verify the coin was sold
+        assertTrue(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
     void testProfitDropBelowPurchase() throws Exception {
         // Add a purchase reaching profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(

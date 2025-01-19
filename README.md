@@ -17,7 +17,7 @@ The following rules apply:
 * The current market price for every coin is checked every 30 seconds
 * If the market price falls below the purchase price the bot tries to average down the purchase price by buying the same amount of the held coin at a lower price. Multiple levels of averaging down stages can be configured (e.g. 2.0%, 4.0%, 6.0%)
 * If the market price rises above the purchase price, the stop loss price is increased (trailing stop loss)
-* If a coin has been averaged down twice or more and then reaches the first profit level, then a recovery sale is initiated to free funds and lower risk.
+* If a coin has been averaged down on the last available step and then reaches the first profit level, then a recovery sale is initiated to free funds and lower risk.
 * The bot records reached profit levels per held coin. These levels are configurable (e.g. 3%, 4%, 5%, 6%)
 * If the market price of a held coin drops below the previous profit level (), the bot sells the coin, cashing in the profit.
 
