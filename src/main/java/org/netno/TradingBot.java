@@ -165,14 +165,15 @@ public class TradingBot {
                         ? (tradeInfo.amount * currentPrice)
                         : getPurchaseMoney(usdcBalance, config.useFundsPortionPerTrade);
 
-                buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
+                boolean success = buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
 
-                // Move to the next step
-                tradeInfo.increaseAverageDown();
-                saveAssets();
-                log("INFO", String.format("Held coin %s is now a average down %d.",
-                        coin, tradeInfo.averageDownStepIndex));
-
+                if (success) {
+                    // Move to the next step
+                    tradeInfo.increaseAverageDown();
+                    saveAssets();
+                    log("INFO", String.format("Held coin %s is now a average down %d.",
+                            coin, tradeInfo.averageDownStepIndex));
+                }
                 return; // Skip further processing
             }
 
@@ -273,7 +274,7 @@ public class TradingBot {
         }
     }
 
-    private void buyCoin(String coin, String tradingPair, double amountToSpend, double currentPrice, boolean update)
+    private boolean buyCoin(String coin, String tradingPair, double amountToSpend, double currentPrice, boolean update)
             throws Exception {
 
         // Fetch precision requirement for the trading pair
@@ -344,13 +345,15 @@ public class TradingBot {
 
             // Save updated assets to file
             saveAssets();
+            return true;
         } else {
             log("ERROR", String.format("Buying %s failed!", coin));
             log("ERROR", String.format(orderResponse.getErrorResponse().getError()));
+            return false;
         }
     }
 
-    private void sellCoin(String coin, String tradingPair, double amount) throws Exception {
+    private boolean sellCoin(String coin, String tradingPair, double amount) throws Exception {
         // Use the exact amount from purchase history without rounding
         String exactSize = Double.toString(amount);
 
@@ -390,9 +393,11 @@ public class TradingBot {
             // Remove the coin from purchase history
             purchaseHistory.remove(coin);
             saveAssets();
+            return true;
         } else {
             log("ERROR", String.format("Selling %s failed!", coin));
             log("ERROR", String.format(orderResponse.getErrorResponse().getError()));
+            return false;
         }
     }
 
@@ -406,7 +411,7 @@ public class TradingBot {
     }
 
     // Save purchase history to file
-    private void saveAssets() {
+    void saveAssets() {
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule()); // Register Java 8 time module
