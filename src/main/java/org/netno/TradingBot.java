@@ -179,6 +179,7 @@ public class TradingBot {
     }
 
     public void executeTrade() {
+        log("DEBUG", "---- EXECUTING ON HELD COINS ----");
         purchaseHistory.forEach((coin, tradeInfo) -> {
             try {
                 String tradingPair = coin + "-" + QUOTECURRENCY;
