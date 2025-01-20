@@ -166,8 +166,10 @@ public class TradingBot {
                     double fundsToSpend = getPurchaseMoney(usdcBalance, config.useFundsPortionPerTrade);
                     log("INFO", String.format("Buying %s for %.6f USDC at %.6f per unit.",
                             coin, fundsToSpend, currentPrice));
-                    buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false); // Initial buy                    
-                    log("DEBUG", String.format("Current cash: %s USDC.", usdcBalance));
+                    if (buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false)) {
+                        //let's only buy one coin at a time and break here out of the for loop
+                        break;
+                    }       
                 } else {
                     log("DEBUG", String.format("No significant price drop for %s. Skipping BUY.", coin));
                 }
@@ -381,6 +383,7 @@ public class TradingBot {
             // Save updated assets to file
             saveAssets();
             usdcBalance = marketDataFetcher.getUsdcBalance();
+            log("DEBUG", String.format("Current cash: %s USDC.", usdcBalance));
             return true;
         } else {
             log("ERROR", String.format("Buying %s failed!", coin));
