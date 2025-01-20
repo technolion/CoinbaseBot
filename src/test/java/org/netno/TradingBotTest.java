@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -45,7 +46,7 @@ class TradingBotTest {
         when(marketDataFetcherMock.getBasePrecision("TEST-USDC")).thenReturn(0.001);
 
         // Mock Purchase History
-        purchaseHistoryMock = new HashMap<>();
+        purchaseHistoryMock = new ConcurrentHashMap<>();
 
         // Mock OrdersService
         OrdersService ordersServiceMock = mock(OrdersService.class);
@@ -66,7 +67,7 @@ class TradingBotTest {
     @Test
     void testInitialBuyConditionMet() throws Exception {
         // Simulate initial buy condition
-        bot.executeTrade("TEST", 1000);
+        bot.evaluateInitialPurchase();
 
         // Check if the purchase is recorded in history
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
@@ -80,8 +81,7 @@ class TradingBotTest {
         // Change price change to -4% (doesn't meet 5% drop condition)
         when(marketDataFetcherMock.get24hPriceChangePercentage("TEST-USDC")).thenReturn(-4.0);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.evaluateInitialPurchase();
 
         // Verify no purchase is recorded
         assertFalse(purchaseHistoryMock.containsKey("TEST"));
@@ -96,8 +96,7 @@ class TradingBotTest {
         // Simulate price drop to average down
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.489);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the average down step is updated
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
@@ -114,8 +113,7 @@ class TradingBotTest {
 
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.52);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify trailing stop loss has been increased
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
@@ -131,8 +129,7 @@ class TradingBotTest {
         // Simulate price drop to average down
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.479);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the average down step is updated
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
@@ -150,8 +147,7 @@ class TradingBotTest {
         // Simulate price drop below stop-loss
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.449);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the coin was sold (removed from history)
         assertFalse(purchaseHistoryMock.containsKey("TEST"));
@@ -166,8 +162,7 @@ class TradingBotTest {
         // Simulate price increase to hit profit level
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.51);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify profit level index is updated
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
@@ -183,8 +178,7 @@ class TradingBotTest {
         // Simulate price increase to hit maximum profit level
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.55);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the coin was sold (removed from history)
         assertFalse(purchaseHistoryMock.containsKey("TEST"));
@@ -200,8 +194,7 @@ class TradingBotTest {
         // we were already at level 3 (10%) but are now below level 2 (5%)
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.5245);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the coin was sold (removed from history)
         assertFalse(purchaseHistoryMock.containsKey("TEST"));
@@ -217,8 +210,7 @@ class TradingBotTest {
         // we were already at level 1 (2%) but are now below
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.5095);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the coin was not sold
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
@@ -234,8 +226,7 @@ class TradingBotTest {
         // we expect a recovery sale
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.511);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the coin was sold
         assertFalse(purchaseHistoryMock.containsKey("TEST"));
@@ -251,8 +242,7 @@ class TradingBotTest {
         // we don'r expect a recovery sale because the average down step was not the last possible one
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.511);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the coin was sold
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
@@ -267,8 +257,7 @@ class TradingBotTest {
         // Simulate price drops below purchase price but above stop loss
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.499);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the coin was not sold
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
@@ -283,8 +272,7 @@ class TradingBotTest {
         // Simulate price drops below purchase price but above stop loss
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.499);
 
-        // Execute trade
-        bot.executeTrade("TEST", 1000);
+        bot.executeTrade();
 
         // Verify the coin was not sold
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
