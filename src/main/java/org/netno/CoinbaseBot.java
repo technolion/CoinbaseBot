@@ -10,6 +10,7 @@ public class CoinbaseBot {
     private static final String CONFIG_FILE = "config.json";
     private static Config config;
     private static CoinbaseAdvancedClient client;
+    private static TradingBot tradingBot;
 
     public CoinbaseAdvancedClient getClient() {
         return client;
@@ -33,8 +34,11 @@ public class CoinbaseBot {
             command = scanner.nextLine().trim().toLowerCase();
 
             switch (command) {
-                case "st":
+                case "start":
                     startTrading();
+                    break;
+                case "stop":
+                    stopTrading();
                     break;
                 case "exit":
                     System.out.println("Exiting CoinbaseBot.");
@@ -42,7 +46,8 @@ public class CoinbaseBot {
                     System.exit(0);
                 case "help":
                     System.out.println("Available commands:");
-                    System.out.println("'st' - Start automatic trading.");
+                    System.out.println("'start' - Start automatic trading.");
+                    System.out.println("'stop' - Stop automatic trading.");
                     System.out.println("'exit' - Exit the program.");
                     break;
                 default:
@@ -76,19 +81,34 @@ public class CoinbaseBot {
             return;
         }
 
+        if (tradingBot != null) {
+            System.out.println("Trading is already running. Stop it first!");
+            return;
+        }
+
         System.out.println("Starting trading loop...");
 
-        TradingBot bot = new TradingBot(client, config);
-        if (bot.initialized) {
-            bot.startTrading();
-            WebServer webServer = new WebServer(bot);
+        tradingBot = new TradingBot(client, config);
+        if (tradingBot.initialized) {
+            tradingBot.startTrading();
+            WebServer webServer = new WebServer(tradingBot);
             try {
                 webServer.start();
             } catch (Exception e) {
-                System.out.println("Failed to start web server: "+e.getLocalizedMessage());
+                System.out.println("Failed to start web server: " + e.getLocalizedMessage());
             }
         } else {
             System.out.println("Failed to start trading!");
+        }
+    }
+
+    private static void stopTrading() {
+        if (tradingBot != null) {
+            tradingBot.stopTrading();
+            tradingBot = null;
+            System.out.println("Trading loop stopped. Returning to main menu...");
+        } else {
+            System.out.println("Trading is not currently running.");
         }
     }
 }
