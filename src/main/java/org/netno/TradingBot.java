@@ -228,10 +228,11 @@ public class TradingBot {
                         log("INFO", String.format("Held coin %s is now a average down %d.",
                                 coin, tradeInfo.averageDownStepIndex));
                     }
+
                     return; // Skip further processing
                 }
 
-                // 3. Recovery Sale Handling
+                // 2. Recovery Sale Handling
                 double recoveryProfitLevelPercentage = config.profitLevels.get(config.profitLevelForRecoverySale);
                 double recoveryProfitLevelPrice = tradeInfo.purchasePrice
                         + (tradeInfo.purchasePrice / 100 * recoveryProfitLevelPercentage);
@@ -245,6 +246,8 @@ public class TradingBot {
                             "Selling %s  at %.6f due recovery from averaging down.",
                             coin, currentPrice));
                     sellCoin(coin, tradingPair, tradeInfo.amount);
+
+                    return; // Skip further processing
                 }
 
                 // 3. Profit Level Handling
@@ -289,7 +292,8 @@ public class TradingBot {
                     log("INFO", String.format("Selling %s due to stop-loss. Current: %.6f, Stop-Loss: %.6f",
                             coin, currentPrice, tradeInfo.trailingStopLoss));
                     sellCoin(coin, tradingPair, tradeInfo.amount);
-                    return;
+
+                    return; // Skip further processing
                 } else if (currentPrice < previousProfitLevelPrice) {
                     // price dropped below previously reached profit level and last reached profit
                     // level was at least 2
@@ -297,7 +301,8 @@ public class TradingBot {
                             "Selling %s due to profit drop. Current: %.6f, Previous Profit level price (%.6f) undercut",
                             coin, currentPrice, previousProfitLevelPrice));
                     sellCoin(coin, tradingPair, tradeInfo.amount);
-                    return;
+
+                    return; // Skip further processing
                 }
 
                 // 5. Hold the coin if no condition is met
