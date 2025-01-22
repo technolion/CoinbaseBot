@@ -154,6 +154,10 @@ public class TradingBot {
         }
         log("DEBUG", String.format("Current cash: %s USDC.", usdcBalance));
         for (String coin : config.coins) {
+            if(purchaseHistory.containsKey(coin)) {
+                //already bought, continue
+                continue;
+            }
             try {
                 String tradingPair = coin + "-" + QUOTECURRENCY;
                 double priceChangePercentage = marketDataFetcher.get24hPriceChangePercentage(tradingPair);

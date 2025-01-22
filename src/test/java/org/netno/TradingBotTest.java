@@ -72,7 +72,7 @@ class TradingBotTest {
         // Check if the purchase is recorded in history
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
-        assertEquals(0.50, tradeInfo.getPurchasePrice(), 0.001);
+        assertEquals(0.50, tradeInfo.getPurchasePrice());
         assertEquals(tradeInfo.getTrailingStopLoss(), 0.45);
     }
 
@@ -85,6 +85,20 @@ class TradingBotTest {
 
         // Verify no purchase is recorded
         assertFalse(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void testVerifyBuyEachCoinOnlyOnce() throws Exception {
+        // Simulate initial buy condition
+        bot.evaluateInitialPurchase();
+        // Check if the purchase is recorded in history
+        assertTrue(purchaseHistoryMock.containsKey("TEST"));
+        TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
+        double amount = tradeInfo.getAmount();
+        bot.evaluateInitialPurchase();
+        tradeInfo = purchaseHistoryMock.get("TEST");
+        double newamount = tradeInfo.getAmount();
+        assertEquals(amount, newamount);
     }
 
     @Test
