@@ -199,7 +199,7 @@ public class TradingBot {
 
                 // Display current status of the coin
                 log("DEBUG", String.format(
-                        "Status for %s: Held Amount: %.6f, Purchase Price: %.6f, Current Price: %.6f, Profit Level: %d (%.2f%%), Highest Price: %.6f, Stop-Loss: %.6f, Difference: %.2f%%, Averaged Down Step: %d",
+                        "%s: Amount: %.6f, Purchase $: %.6f, Current $: %.6f, Profit Lv: %d (%.2f%%), Highest $: %.6f, Stop-Loss: %.6f, Performance: %.2f%%, A/D Step: %d",
                         coin, tradeInfo.amount, tradeInfo.purchasePrice, currentPrice, tradeInfo.profitLevelIndex,
                         config.profitLevels.get(tradeInfo.profitLevelIndex), tradeInfo.highestPrice,
                         tradeInfo.trailingStopLoss, priceDifference, tradeInfo.averageDownStepIndex));
