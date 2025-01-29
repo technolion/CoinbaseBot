@@ -487,7 +487,7 @@ public class TradingBot {
         return new HashMap<>();
     }
 
-    private void log(String level, String message) {
+    void log(String level, String message) {
         try {
             LogLevel currentLevel = LogLevel.valueOf(level.toUpperCase());
 
