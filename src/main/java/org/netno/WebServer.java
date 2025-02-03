@@ -1,17 +1,24 @@
 package org.netno;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 public class WebServer {
 
@@ -25,6 +32,7 @@ public class WebServer {
         tb.log("INFO", "Starting Web Server...");
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
         server.createContext("/", new HeldCoinsHandler());
+        server.createContext("/sell", new SellCoinHandler());
         server.setExecutor(null); // Use default executor
         server.start();
         tb.log("INFO", "Web server started on http://localhost:8080");
@@ -118,11 +126,12 @@ public class WebServer {
                 html.append("<th>Win/Loss<br>(USDC)</th>");
                 html.append("<th>Highest<br>Profit<br>Level</th>");
                 html.append("<th>Average<br>Down<br>Steps</th>");
+                html.append("<th>Action</th>");
                 html.append("</tr>");
 
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-                Map<String, TradeInfo> purchaseHistory = tb.getPurchaseHistory();
+                Map<String, TradeInfo> purchaseHistory = tb.getCurrentAssets();
                 purchaseHistory.forEach((coin, tradeInfo) -> {
                     double currentPrice;
                     try {
@@ -162,6 +171,12 @@ public class WebServer {
                             .append("</td>");
                     html.append("<td>").append(tradeInfo.getAverageDownStepIndex() > 0 ? averageDownStep : "None")
                             .append("</td>");
+                    html.append("<td>");
+                    html.append("<form method='post' action='/sell'>");
+                    html.append("<input type='hidden' name='coin' value='").append(coin).append("'/>");
+                    html.append("<input type='submit' value='Sell'/>");
+                    html.append("</form>");
+                    html.append("</td>");
                     html.append("</tr>");
                 });
 
@@ -198,6 +213,52 @@ public class WebServer {
                 return "<html><body><h1>Error Generating Response</h1><p>" + e.getMessage() + "</p></body></html>";
             }
             return html.toString();
+        }
+    }
+
+    private class SellCoinHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                // Parse the form data
+                Map<String, String> formData = parseFormData(exchange.getRequestBody());
+                String coin = formData.get("coin");
+
+                if (coin != null && !coin.isEmpty()) {
+                    try {
+                        // Execute the sell operation
+                        boolean success = tb.sellCoin(coin);
+                        String response = success ? "Successfully sold " + coin : "Failed to sell " + coin;
+                        exchange.sendResponseHeaders(200, response.getBytes().length);
+                        exchange.getResponseBody().write(response.getBytes());
+                    } catch (Exception e) {
+                        String response = "Error selling " + coin + ": " + e.getMessage();
+                        exchange.sendResponseHeaders(500, response.getBytes().length);
+                        exchange.getResponseBody().write(response.getBytes());
+                    }
+                } else {
+                    String response = "Invalid coin specified.";
+                    exchange.sendResponseHeaders(400, response.getBytes().length);
+                    exchange.getResponseBody().write(response.getBytes());
+                }
+            } else {
+                exchange.sendResponseHeaders(405, -1); // Method Not Allowed
+            }
+            exchange.getResponseBody().close();
+        }
+
+        private Map<String, String> parseFormData(InputStream requestBody) throws IOException {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(requestBody, StandardCharsets.UTF_8));
+            StringBuilder formData = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                formData.append(line);
+            }
+            return Arrays.stream(formData.toString().split("&"))
+                    .map(s -> s.split("="))
+                    .collect(Collectors.toMap(
+                            e -> URLDecoder.decode(e[0], StandardCharsets.UTF_8),
+                            e -> URLDecoder.decode(e[1], StandardCharsets.UTF_8)));
         }
     }
 }

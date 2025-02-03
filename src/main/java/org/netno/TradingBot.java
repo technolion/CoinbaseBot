@@ -39,7 +39,7 @@ public class TradingBot {
 
     private final OrdersService ordersService;
     private final MarketDataFetcher marketDataFetcher;
-    private Map<String, TradeInfo> purchaseHistory = new ConcurrentHashMap<>();
+    private Map<String, TradeInfo> currentAssets = new ConcurrentHashMap<>();
     double usdcBalance;
     public Config config;
     public boolean initialized = false;
@@ -51,7 +51,7 @@ public class TradingBot {
         this.config = config;
         usdcBalance = marketDataFetcher.getUsdcBalance();
         try {
-            this.purchaseHistory = loadAssets();
+            this.currentAssets = loadAssets();
         } catch (Exception e) {
             return;
         }
@@ -69,14 +69,14 @@ public class TradingBot {
         this.marketDataFetcher = marketDataFetcher;
         this.config = config;
         usdcBalance = marketDataFetcher.getUsdcBalance();
-        this.purchaseHistory = purchaseHistory;
+        this.currentAssets = purchaseHistory;
         this.logLevel = LogLevel.valueOf(config.logLevel.toUpperCase());
         log("INFO", "TradingBot initialized.");
         log("INFO", String.format("Current cash: %s USDC.", usdcBalance));
     }
 
-    public Map<String, TradeInfo> getPurchaseHistory() {
-        return purchaseHistory;
+    public Map<String, TradeInfo> getCurrentAssets() {
+        return currentAssets;
     }
 
     public MarketDataFetcher getMarketDataFetcher() {
@@ -84,7 +84,7 @@ public class TradingBot {
     }
 
     int getNumberOfHeldCoins() {
-        return purchaseHistory.size();
+        return currentAssets.size();
     }
 
     /**
@@ -97,7 +97,7 @@ public class TradingBot {
     public double getTotalUsdcValueOfHeldCoins() {
         double totalUsdcValue = 0.0;
 
-        for (Map.Entry<String, TradeInfo> entry : purchaseHistory.entrySet()) {
+        for (Map.Entry<String, TradeInfo> entry : currentAssets.entrySet()) {
             TradeInfo tradeInfo = entry.getValue();
             double coinValue = tradeInfo.getAmount() * tradeInfo.getPurchasePrice();
             totalUsdcValue += coinValue;
@@ -146,7 +146,7 @@ public class TradingBot {
 
     public void evaluateInitialPurchase() {
         log("DEBUG", "---- EVALUATING INITIAL PURCHASE ----");
-        if (purchaseHistory.size() >= config.maxHeldCoins) {
+        if (currentAssets.size() >= config.maxHeldCoins) {
             log("DEBUG",
                     String.format("Max held coins limit (%d) reached. Skipping initial purchase evaluation.",
                             config.maxHeldCoins));
@@ -154,7 +154,7 @@ public class TradingBot {
         }
         log("DEBUG", String.format("Current cash: %s USDC.", usdcBalance));
         for (String coin : config.coins) {
-            if(purchaseHistory.containsKey(coin)) {
+            if(currentAssets.containsKey(coin)) {
                 //already bought, continue
                 continue;
             }
@@ -186,7 +186,7 @@ public class TradingBot {
 
     public void executeTrade() {
         log("DEBUG", "---- EXECUTING ON HELD COINS ----");
-        purchaseHistory.forEach((coin, tradeInfo) -> {
+        currentAssets.forEach((coin, tradeInfo) -> {
             try {
                 String tradingPair = coin + "-" + QUOTECURRENCY;
                 double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
@@ -249,7 +249,7 @@ public class TradingBot {
                     log("INFO", String.format(
                             "Selling %s  at %.6f due recovery from averaging down.",
                             coin, currentPrice));
-                    sellCoin(coin, tradingPair, tradeInfo.amount);
+                    sellCoin(coin);
 
                     return; // Skip further processing
                 }
@@ -273,7 +273,7 @@ public class TradingBot {
                     if (tradeInfo.profitLevelIndex == (config.profitLevels.size() - 1)) {
                         log("INFO", String.format("Selling %s due to max profit level reached. Current: %.6f", coin,
                                 currentPrice));
-                        sellCoin(coin, tradingPair, tradeInfo.amount);
+                        sellCoin(coin);
                     } else {
                         log("INFO", String.format("Reached profit level %d (%.2f%%) for %s. Waiting for next level...",
                                 tradeInfo.profitLevelIndex, config.profitLevels.get(tradeInfo.profitLevelIndex), coin));
@@ -295,7 +295,7 @@ public class TradingBot {
                     // price dropped below stop loss
                     log("INFO", String.format("Selling %s due to stop-loss. Current: %.6f, Stop-Loss: %.6f",
                             coin, currentPrice, tradeInfo.trailingStopLoss));
-                    sellCoin(coin, tradingPair, tradeInfo.amount);
+                    sellCoin(coin);
 
                     return; // Skip further processing
                 } else if (currentPrice < previousProfitLevelPrice) {
@@ -304,7 +304,7 @@ public class TradingBot {
                     log("INFO", String.format(
                             "Selling %s due to profit drop. Current: %.6f, Previous Profit level price (%.6f) undercut",
                             coin, currentPrice, previousProfitLevelPrice));
-                    sellCoin(coin, tradingPair, tradeInfo.amount);
+                    sellCoin(coin);
 
                     return; // Skip further processing
                 }
@@ -362,7 +362,7 @@ public class TradingBot {
 
             // If this is an update (averaging down)
             if (update) {
-                TradeInfo tradeInfo = purchaseHistory.get(coin);
+                TradeInfo tradeInfo = currentAssets.get(coin);
                 if (tradeInfo != null) {
                     // Update purchase price and amount
                     tradeInfo.updatePurchase(currentPrice, Double.parseDouble(roundedBaseSize));
@@ -379,7 +379,7 @@ public class TradingBot {
                 double initialStopLoss = currentPrice * (1 - config.trailingStopLossPercent / 100.0);
 
                 // Add new entry to the purchase history
-                purchaseHistory.put(coin,
+                currentAssets.put(coin,
                         new TradeInfo(currentPrice, Double.parseDouble(roundedBaseSize), LocalDateTime.now(),
                                 currentPrice,
                                 initialStopLoss,
@@ -401,7 +401,18 @@ public class TradingBot {
         }
     }
 
-    private boolean sellCoin(String coin, String tradingPair, double amount) throws Exception {
+    boolean sellCoin(String coin) throws Exception {
+        String tradingPair = coin + "-" + QUOTECURRENCY;
+
+        TradeInfo tradeInfo = currentAssets.get(coin);
+        if(tradeInfo == null) {
+            log("ERROR", String.format("Selling %s failed because it's not in the assets.", coin));
+            return false;
+        }
+
+        double amount = tradeInfo.amount;
+        double purchasePrice = tradeInfo.getPurchasePrice();
+
         // Use the exact amount from purchase history without rounding
         String exactSize = Double.toString(amount);
 
@@ -422,12 +433,8 @@ public class TradingBot {
         // Get the current price for profit/loss calculation
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
 
-        // Retrieve the purchase price for profit calculation
-        TradeInfo tradeInfo = purchaseHistory.get(coin);
-        double purchasePrice = tradeInfo.getPurchasePrice();
-
         // Calculate profit or loss in USDC
-        double totalPurchaseValue = tradeInfo.getAmount() * purchasePrice;
+        double totalPurchaseValue = amount * purchasePrice;
         double totalSellValue = amount * currentPrice;
         double profitOrLoss = totalSellValue - totalPurchaseValue;
 
@@ -439,7 +446,7 @@ public class TradingBot {
                     exactSize, coin, orderResponse.getSuccessResponse().getOrderId(), profitOrLoss));
 
             // Remove the coin from purchase history
-            purchaseHistory.remove(coin);
+            currentAssets.remove(coin);
             saveAssets();
             usdcBalance = marketDataFetcher.getUsdcBalance();
             return true;
@@ -464,7 +471,7 @@ public class TradingBot {
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule()); // Register Java 8 time module
-            mapper.writeValue(new File(ASSETS_FILE), purchaseHistory);
+            mapper.writeValue(new File(ASSETS_FILE), currentAssets);
         } catch (IOException e) {
             log("ERROR", String.format("Failed to save purchase history: " + e.getMessage()));
         }
