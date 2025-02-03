@@ -146,41 +146,56 @@ public class TradingBot {
 
     public void evaluateInitialPurchase() {
         log("DEBUG", "---- EVALUATING INITIAL PURCHASE ----");
+
         if (currentAssets.size() >= config.maxHeldCoins) {
-            log("DEBUG",
-                    String.format("Max held coins limit (%d) reached. Skipping initial purchase evaluation.",
-                            config.maxHeldCoins));
+            log("DEBUG", String.format("Max held coins limit (%d) reached. Skipping initial purchase evaluation.",
+                    config.maxHeldCoins));
             return;
         }
-        log("DEBUG", String.format("Current cash: %s USDC.", usdcBalance));
+
+        log("DEBUG", String.format("Current cash: %.6f USDC.", usdcBalance));
+
+        CoinDropInfo bestCoinToBuy = null;
+
         for (String coin : config.coins) {
-            if(currentAssets.containsKey(coin)) {
-                //already bought, continue
-                continue;
+            if (currentAssets.containsKey(coin)) {
+                continue; // Skip already held coins
             }
+
             try {
                 String tradingPair = coin + "-" + QUOTECURRENCY;
                 double priceChangePercentage = marketDataFetcher.get24hPriceChangePercentage(tradingPair);
                 double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
 
-                log("DEBUG",
-                        String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin,
-                                priceChangePercentage));
+                log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin,
+                        priceChangePercentage));
+
+                // Keep track of the coin with the strongest decline
                 if (priceChangePercentage <= (config.purchaseDropPercent * -1)) {
-                    double fundsToSpend = getPurchaseMoney(usdcBalance, config.useFundsPortionPerTrade);
-                    log("INFO", String.format("Buying %s for %.6f USDC at %.6f per unit.",
-                            coin, fundsToSpend, currentPrice));
-                    if (buyCoin(coin, tradingPair, fundsToSpend, currentPrice, false)) {
-                        //let's only buy one coin at a time and break here out of the for loop
-                        break;
-                    }       
-                } else {
-                    log("DEBUG", String.format("No significant price drop for %s. Skipping BUY.", coin));
+                    if (bestCoinToBuy == null || priceChangePercentage < bestCoinToBuy.priceChangePercentage) {
+                        bestCoinToBuy = new CoinDropInfo(coin, tradingPair, currentPrice, priceChangePercentage);
+                    }
                 }
+
             } catch (Exception e) {
-                log("ERROR", "Error during initial purchase evalutation on coin " + coin + ": " + e.getMessage());
+                log("ERROR", "Error during initial purchase evaluation for coin " + coin + ": " + e.getMessage());
                 e.printStackTrace();
             }
+        }
+
+        // If a suitable coin is found, proceed with purchase
+        if (bestCoinToBuy != null) {
+            double fundsToSpend = getPurchaseMoney(usdcBalance, config.useFundsPortionPerTrade);
+            log("INFO", String.format("Buying %s with strongest decline (%.2f%%) for %.6f USDC at %.6f per unit.",
+                    bestCoinToBuy.coin, bestCoinToBuy.priceChangePercentage, fundsToSpend, bestCoinToBuy.currentPrice));
+            try {
+                buyCoin(bestCoinToBuy.coin, bestCoinToBuy.tradingPair, fundsToSpend, bestCoinToBuy.currentPrice, false);
+            } catch (Exception e) {
+                log("ERROR", "Error while attempting to buy coin " + bestCoinToBuy.coin + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            log("DEBUG", "No coin met the purchase condition.");
         }
     }
 
@@ -405,7 +420,7 @@ public class TradingBot {
         String tradingPair = coin + "-" + QUOTECURRENCY;
 
         TradeInfo tradeInfo = currentAssets.get(coin);
-        if(tradeInfo == null) {
+        if (tradeInfo == null) {
             log("ERROR", String.format("Selling %s failed because it's not in the assets.", coin));
             return false;
         }
@@ -509,6 +524,21 @@ public class TradingBot {
             }
         } catch (Exception e) {
             System.out.println("Failed to write log: " + e.getMessage());
+        }
+    }
+
+    // Helper class to store information about a coin's decline
+    private static class CoinDropInfo {
+        String coin;
+        String tradingPair;
+        double currentPrice;
+        double priceChangePercentage;
+
+        CoinDropInfo(String coin, String tradingPair, double currentPrice, double priceChangePercentage) {
+            this.coin = coin;
+            this.tradingPair = tradingPair;
+            this.currentPrice = currentPrice;
+            this.priceChangePercentage = priceChangePercentage;
         }
     }
 }
