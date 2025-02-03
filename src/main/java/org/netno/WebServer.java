@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -64,6 +65,7 @@ public class WebServer {
             StringBuilder html = new StringBuilder();
             try {
                 tb.log("DEBUG", "Generating HTML response...");
+
                 html.append("<!DOCTYPE html>");
                 html.append("<html>");
                 html.append("<head>");
@@ -94,11 +96,8 @@ public class WebServer {
                 html.append("        button.addEventListener('click', () => {");
                 html.append("            button.classList.toggle('active');");
                 html.append("            const content = button.nextElementSibling;");
-                html.append("            if (content.style.display === 'block') {");
-                html.append("                content.style.display = 'none';");
-                html.append("            } else {");
-                html.append("                content.style.display = 'block';");
-                html.append("            }");
+                html.append(
+                        "            content.style.display = content.style.display === 'block' ? 'none' : 'block';");
                 html.append("        });");
                 html.append("    });");
                 html.append("});");
@@ -131,8 +130,9 @@ public class WebServer {
 
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-                Map<String, TradeInfo> purchaseHistory = tb.getCurrentAssets();
-                purchaseHistory.forEach((coin, tradeInfo) -> {
+                // **Snapshot of currentAssets to avoid concurrent modification**
+                Map<String, TradeInfo> purchaseHistorySnapshot = new HashMap<>(tb.getCurrentAssets());
+                purchaseHistorySnapshot.forEach((coin, tradeInfo) -> {
                     double currentPrice;
                     try {
                         currentPrice = tb.getMarketDataFetcher().getCurrentPrice(coin + "-USDC");
@@ -166,7 +166,7 @@ public class WebServer {
                     html.append("<td class='").append(winLossPercent >= 0 ? "profit" : "loss").append("'>")
                             .append(String.format("%.2f%%", winLossPercent)).append("</td>");
                     html.append("<td class='").append(winLossUSDC >= 0 ? "profit" : "loss").append("'>")
-                            .append(String.format("%.2f $", winLossUSDC)).append("</td>");
+                            .append(String.format("%.2f USDC", winLossUSDC)).append("</td>");
                     html.append("<td>").append(tradeInfo.getProfitLevelIndex() > 0 ? profitLevel : "None")
                             .append("</td>");
                     html.append("<td>").append(tradeInfo.getAverageDownStepIndex() > 0 ? averageDownStep : "None")
@@ -190,19 +190,13 @@ public class WebServer {
                 // Collapsible Profit Levels Section
                 html.append("<button class='collapsible'>Profit Levels</button>");
                 html.append("<div class='content'>");
-                List<Double> profitLevels = tb.config.profitLevels;
-                for (int i = 0; i < profitLevels.size(); i++) {
-                    html.append("<p>Level ").append(i).append(": ").append(profitLevels.get(i)).append("%</p>");
-                }
+                tb.config.profitLevels.forEach(level -> html.append("<p>Level ").append(level).append("%</p>"));
                 html.append("</div>");
 
                 // Collapsible Average Down Steps Section
                 html.append("<button class='collapsible'>Average Down Levels</button>");
                 html.append("<div class='content'>");
-                List<Double> averageDownSteps = tb.config.averageDownSteps;
-                for (int i = 0; i < averageDownSteps.size(); i++) {
-                    html.append("<p>Step ").append(i).append(": ").append(averageDownSteps.get(i)).append("%</p>");
-                }
+                tb.config.averageDownSteps.forEach(step -> html.append("<p>Step ").append(step).append("%</p>"));
                 html.append("</div>");
 
                 html.append("</body>");
