@@ -21,6 +21,7 @@ public class Config {
     List<Double> averageDownSteps;
     int minimumProfitLevelForRegularSale;
     int profitLevelForRecoverySale;
+    double marketRecoveryPercent;
 
     public Config(){};
 
@@ -48,6 +49,7 @@ public class Config {
                 .collect(Collectors.toList());
         config.minimumProfitLevelForRegularSale = json.getInt("minimumProfitLevelForRegularSale");
         config.profitLevelForRecoverySale = json.getInt("profitLevelForRecoverySale");
+        config.marketRecoveryPercent = json.getDouble("marketRecoveryPercent");
         return config;
     }
 

@@ -37,6 +37,8 @@ class TradingBotTest {
         testConfig.minimumProfitLevelForRegularSale = 2;
         testConfig.profitLevelForRecoverySale = 1;
         testConfig.logLevel = "DEBUG";
+        testConfig.marketRecoveryPercent = 3.0;
+
 
 
         // Mock MarketDataFetcher

@@ -43,6 +43,7 @@ public class TradingBot {
     double usdcBalance;
     public Config config;
     public boolean initialized = false;
+    private boolean stopLossMarker = false; // Indicates that purchases are on hold after a stop-loss sale
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1); // Single-threaded executor
 
     public TradingBot(CoinbaseAdvancedClient client, Config config) {
@@ -71,6 +72,7 @@ public class TradingBot {
         usdcBalance = marketDataFetcher.getUsdcBalance();
         this.currentAssets = purchaseHistory;
         this.logLevel = LogLevel.valueOf(config.logLevel.toUpperCase());
+        this.stopLossMarker = false;
         log("INFO", "TradingBot initialized.");
         log("INFO", String.format("Current cash: %s USDC.", usdcBalance));
     }
@@ -112,6 +114,7 @@ public class TradingBot {
         scheduler.scheduleAtFixedRate(() -> {
             synchronized (this) { // Ensure only one task modifies state at a time
                 try {
+                    checkMarketRecovery();
                     evaluateInitialPurchase();
                 } catch (Exception e) {
                     log("ERROR", "Error in evaluateInitialPurchase: " + e.getMessage());
@@ -147,42 +150,46 @@ public class TradingBot {
     public void evaluateInitialPurchase() {
         log("DEBUG", "---- EVALUATING INITIAL PURCHASE ----");
 
-        if (currentAssets.size() >= config.maxHeldCoins) {
-            log("DEBUG", String.format("Max held coins limit (%d) reached. Skipping initial purchase evaluation.",
-                    config.maxHeldCoins));
+        // Skip evaluation if stop-loss marker is active
+        if (stopLossMarker) {
+            log("DEBUG", "Stop-loss marker is active. Skipping initial purchase evaluation.");
             return;
         }
 
+        if (currentAssets.size() >= config.maxHeldCoins) {
+            log("DEBUG", String.format("Max held coins limit (%d) reached. Skipping initial purchase evaluation.", config.maxHeldCoins));
+            return;
+        }
+    
         log("DEBUG", String.format("Current cash: %.6f USDC.", usdcBalance));
-
+    
         CoinDropInfo bestCoinToBuy = null;
-
+    
         for (String coin : config.coins) {
             if (currentAssets.containsKey(coin)) {
                 continue; // Skip already held coins
             }
-
+    
             try {
                 String tradingPair = coin + "-" + QUOTECURRENCY;
                 double priceChangePercentage = marketDataFetcher.get24hPriceChangePercentage(tradingPair);
                 double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
-
-                log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin,
-                        priceChangePercentage));
-
+    
+                log("DEBUG", String.format("Checking BUY condition for %s. Price Change: %.2f%%", coin, priceChangePercentage));
+    
                 // Keep track of the coin with the strongest decline
                 if (priceChangePercentage <= (config.purchaseDropPercent * -1)) {
                     if (bestCoinToBuy == null || priceChangePercentage < bestCoinToBuy.priceChangePercentage) {
                         bestCoinToBuy = new CoinDropInfo(coin, tradingPair, currentPrice, priceChangePercentage);
                     }
                 }
-
+    
             } catch (Exception e) {
                 log("ERROR", "Error during initial purchase evaluation for coin " + coin + ": " + e.getMessage());
                 e.printStackTrace();
             }
         }
-
+    
         // If a suitable coin is found, proceed with purchase
         if (bestCoinToBuy != null) {
             double fundsToSpend = getPurchaseMoney(usdcBalance, config.useFundsPortionPerTrade);
@@ -311,7 +318,8 @@ public class TradingBot {
                     log("INFO", String.format("Selling %s due to stop-loss. Current: %.6f, Stop-Loss: %.6f",
                             coin, currentPrice, tradeInfo.trailingStopLoss));
                     sellCoin(coin);
-
+                    stopLossMarker = true; // Activate the stop-loss marker
+                    saveAssets();
                     return; // Skip further processing
                 } else if (currentPrice < previousProfitLevelPrice) {
                     // price dropped below previously reached profit level and last reached profit
@@ -333,6 +341,32 @@ public class TradingBot {
                 e.printStackTrace();
             }
         });
+    }
+
+    private void checkMarketRecovery() {
+        if (!stopLossMarker) {
+            return;
+        }
+        try {
+            double totalPercentageChange = 0.0;
+            int coinCount = 0;
+
+            for (String coin : config.coins) {
+                String tradingPair = coin + "-" + QUOTECURRENCY;
+                double priceChangePercentage = marketDataFetcher.get24hPriceChangePercentage(tradingPair);
+                totalPercentageChange += priceChangePercentage;
+                coinCount++;
+            }
+
+            double averageChange = totalPercentageChange / coinCount;
+            if (averageChange >= config.marketRecoveryPercent) {
+                log("INFO", String.format("Market has recovered by %.2f%%. Clearing stop-loss marker.", averageChange));
+                stopLossMarker = false;
+                saveAssets();
+            }
+        } catch (Exception e) {
+            log("ERROR", "Error checking market recovery: " + e.getMessage());
+        }
     }
 
     private boolean buyCoin(String coin, String tradingPair, double amountToSpend, double currentPrice, boolean update)
@@ -485,10 +519,16 @@ public class TradingBot {
     void saveAssets() {
         try {
             ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule()); // Register Java 8 time module
-            mapper.writeValue(new File(ASSETS_FILE), currentAssets);
+            mapper.registerModule(new JavaTimeModule());
+
+            // Use a wrapper to save both assets and the stop-loss marker
+            Map<String, Object> dataToSave = new HashMap<>();
+            dataToSave.put("currentAssets", currentAssets);
+            dataToSave.put("stopLossMarker", stopLossMarker);
+
+            mapper.writeValue(new File(ASSETS_FILE), dataToSave);
         } catch (IOException e) {
-            log("ERROR", String.format("Failed to save purchase history: " + e.getMessage()));
+            log("ERROR", "Failed to save purchase history: " + e.getMessage());
         }
     }
 
@@ -498,12 +538,21 @@ public class TradingBot {
             File file = new File(ASSETS_FILE);
             if (file.exists()) {
                 ObjectMapper mapper = new ObjectMapper();
-                mapper.registerModule(new JavaTimeModule()); // Register Java 8 time module
-                return mapper.readValue(file, new TypeReference<Map<String, TradeInfo>>() {
+                mapper.registerModule(new JavaTimeModule());
+
+                // Load data into a temporary wrapper to read both assets and stop-loss marker
+                Map<String, Object> savedData = mapper.readValue(file, new TypeReference<Map<String, Object>>() {
                 });
+                if (savedData.containsKey("stopLossMarker")) {
+                    this.stopLossMarker = (boolean) savedData.get("stopLossMarker");
+                }
+
+                @SuppressWarnings("unchecked")
+                Map<String, TradeInfo> assets = (Map<String, TradeInfo>) savedData.get("currentAssets");
+                return assets != null ? assets : new HashMap<>();
             }
         } catch (IOException e) {
-            log("ERROR", String.format("Failed to load purchase history: " + e.getMessage()));
+            log("ERROR", "Failed to load purchase history: " + e.getMessage());
             throw new Exception("Error when trying to load existing asset file!");
         }
         return new HashMap<>();
