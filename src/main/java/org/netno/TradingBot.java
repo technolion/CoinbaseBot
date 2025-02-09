@@ -43,7 +43,7 @@ public class TradingBot {
     double usdcBalance;
     public Config config;
     public boolean initialized = false;
-    private boolean stopLossMarker = false; // Indicates that purchases are on hold after a stop-loss sale
+    boolean stopLossMarker = false; // Indicates that purchases are on hold after a stop-loss sale
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1); // Single-threaded executor
 
     public TradingBot(CoinbaseAdvancedClient client, Config config) {
@@ -343,7 +343,7 @@ public class TradingBot {
         });
     }
 
-    private void checkMarketRecovery() {
+    void checkMarketRecovery() {
         if (!stopLossMarker) {
             return;
         }

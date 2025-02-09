@@ -167,6 +167,27 @@ class TradingBotTest {
 
         // Verify the coin was sold (removed from history)
         assertFalse(purchaseHistoryMock.containsKey("TEST"));
+
+        //verify stop loss marker
+        assertTrue(bot.stopLossMarker);
+
+         // Simulate initial buy condition
+         bot.evaluateInitialPurchase();
+
+        // purchase is not done, because stop loss marker is true
+        assertFalse(purchaseHistoryMock.containsKey("TEST"));
+
+        // simulate market recovery
+        when(marketDataFetcherMock.get24hPriceChangePercentage("TEST-USDC")).thenReturn(3.5);
+        bot.checkMarketRecovery();
+
+        // Simulate initial buy condition
+        when(marketDataFetcherMock.get24hPriceChangePercentage("TEST-USDC")).thenReturn(-6.0);
+        bot.evaluateInitialPurchase();
+
+        // purchase is done, because stop loss marker was cleared
+        assertTrue(purchaseHistoryMock.containsKey("TEST"));
+
     }
 
     @Test
