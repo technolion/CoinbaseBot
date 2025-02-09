@@ -7,6 +7,7 @@ import com.coinbase.advanced.orders.OrdersService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -339,5 +340,39 @@ class TradingBotTest {
 
         double money = bot.getPurchaseMoney(700.0, 0.5);
         assertEquals(407, money);
+    }
+
+    @Test
+    void testStopTrading() throws Exception {
+        bot.startTrading();
+        bot.stopTrading();
+        assertTrue(bot.scheduler.isShutdown());
+    }
+
+    @Test
+    void testLogWithDifferentLevels() throws Exception {
+        bot.log("TRACE", "This is a TRACE log.");
+        bot.log("DEBUG", "This is a DEBUG log.");
+        bot.log("INFO", "This is an INFO log.");
+        bot.log("ERROR", "This is an ERROR log.");
+        // No assertions needed, just ensure no exceptions are thrown
+    }
+
+    @Test
+    void testCheckMarketRecoveryNoRecovery() throws Exception {
+        bot.stopLossMarker = true;
+        when(marketDataFetcherMock.get24hPriceChangePercentage("TEST-USDC")).thenReturn(1.0);
+        bot.checkMarketRecovery();
+        assertTrue(bot.stopLossMarker); // Marker should still be true
+    }
+
+    @Test
+    void testLoadAssetsFileNotExist() throws Exception {
+        File file = new File("currentAssets.json");
+        if (file.exists()) {
+            file.delete();
+        }
+        Map<String, TradeInfo> assets = bot.loadAssets();
+        assertTrue(assets.isEmpty());
     }
 }

@@ -44,7 +44,7 @@ public class TradingBot {
     public Config config;
     public boolean initialized = false;
     boolean stopLossMarker = false; // Indicates that purchases are on hold after a stop-loss sale
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1); // Single-threaded executor
+    final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1); // Single-threaded executor
 
     public TradingBot(CoinbaseAdvancedClient client, Config config) {
         this.ordersService = CoinbaseAdvancedServiceFactory.createOrdersService(client);
@@ -533,7 +533,7 @@ public class TradingBot {
     }
 
     // Load purchase history from file
-    private Map<String, TradeInfo> loadAssets() throws Exception {
+    Map<String, TradeInfo> loadAssets() throws Exception {
         try {
             File file = new File(ASSETS_FILE);
             if (file.exists()) {
