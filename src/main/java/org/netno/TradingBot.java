@@ -520,13 +520,11 @@ public class TradingBot {
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
-
-            // Use a wrapper to save both assets and the stop-loss marker
-            Map<String, Object> dataToSave = new HashMap<>();
-            dataToSave.put("currentAssets", currentAssets);
-            dataToSave.put("stopLossMarker", stopLossMarker);
-
-            mapper.writeValue(new File(ASSETS_FILE), dataToSave);
+    
+            // Use the wrapper class to save both assets and stop-loss marker
+            AssetDataWrapper dataWrapper = new AssetDataWrapper(currentAssets, stopLossMarker);
+    
+            mapper.writeValue(new File(ASSETS_FILE), dataWrapper);
         } catch (IOException e) {
             log("ERROR", "Failed to save purchase history: " + e.getMessage());
         }
@@ -539,17 +537,13 @@ public class TradingBot {
             if (file.exists()) {
                 ObjectMapper mapper = new ObjectMapper();
                 mapper.registerModule(new JavaTimeModule());
-
-                // Load data into a temporary wrapper to read both assets and stop-loss marker
-                Map<String, Object> savedData = mapper.readValue(file, new TypeReference<Map<String, Object>>() {
-                });
-                if (savedData.containsKey("stopLossMarker")) {
-                    this.stopLossMarker = (boolean) savedData.get("stopLossMarker");
-                }
-
-                @SuppressWarnings("unchecked")
-                Map<String, TradeInfo> assets = (Map<String, TradeInfo>) savedData.get("currentAssets");
-                return assets != null ? assets : new HashMap<>();
+    
+                // Deserialize into the wrapper class
+                AssetDataWrapper dataWrapper = mapper.readValue(file, AssetDataWrapper.class);
+    
+                // Load the stop-loss marker and return current assets
+                this.stopLossMarker = dataWrapper.isStopLossMarker();
+                return dataWrapper.getCurrentAssets();
             }
         } catch (IOException e) {
             log("ERROR", "Failed to load purchase history: " + e.getMessage());
