@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 public class TradeInfo {
 
@@ -86,6 +87,10 @@ public class TradeInfo {
 
     public void setDecimalPlaces(int places) {
         this.decimalPlaces = places;
+    }
+
+    public long getWeeks() {
+        return ChronoUnit.WEEKS.between(this.purchaseDate, LocalDateTime.now());
     }
 
     // Update purchase info for averaging down

@@ -34,13 +34,14 @@ class TradingBotTest {
         testConfig.useFundsPortionPerTrade = 0.2;
         testConfig.trailingStopLossPercent = 10.0;
         testConfig.profitLevels = List.of(0.0, 2.0, 5.0, 10.0);
-        testConfig.averageDownSteps = List.of(0.0,2.0, 4.0, 6.0);
+        testConfig.averageDownSteps = List.of(0.0, 2.0, 4.0, 6.0);
         testConfig.minimumProfitLevelForRegularSale = 2;
         testConfig.profitLevelForRecoverySale = 1;
-        testConfig.logLevel = "DEBUG";
         testConfig.marketRecoveryPercent = 3.0;
+        testConfig.negativeProfitLevels = List.of(1.0, 2.0, 3.0, 4.0, 5.0); // -1% to -5%
 
-
+        // Ensure log level is properly set
+        testConfig.logLevel = "DEBUG";
 
         // Mock MarketDataFetcher
         when(marketDataFetcherMock.getUsdcBalance()).thenReturn(1000.0);
@@ -158,16 +159,16 @@ class TradingBotTest {
     @Test
     void testStopLossTriggered() throws Exception {
         // Add a purchase with stop-loss. Maximum average dow steps are reached
-        purchaseHistoryMock.put("TEST", new TradeInfo(
+        purchaseHistoryMock.put("TEST2", new TradeInfo(
                 0.50, 100, LocalDateTime.now(), 0.55, 0.45, 0, 4, 3));
 
         // Simulate price drop below stop-loss
-        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.449);
+        when(marketDataFetcherMock.getCurrentPrice("TEST2-USDC")).thenReturn(0.449);
 
         bot.executeTrade();
 
-        // Verify the coin was sold (removed from history)
-        assertFalse(purchaseHistoryMock.containsKey("TEST"));
+        // Verify the coin was not sold (removed from history)
+        assertTrue(purchaseHistoryMock.containsKey("TEST2"));
 
         //verify stop loss marker
         assertTrue(bot.stopLossMarker);
@@ -343,13 +344,6 @@ class TradingBotTest {
     }
 
     @Test
-    void testStopTrading() throws Exception {
-        bot.startTrading();
-        bot.stopTrading();
-        assertTrue(bot.scheduler.isShutdown());
-    }
-
-    @Test
     void testLogWithDifferentLevels() throws Exception {
         bot.log("TRACE", "This is a TRACE log.");
         bot.log("DEBUG", "This is a DEBUG log.");
@@ -365,6 +359,85 @@ class TradingBotTest {
         bot.checkMarketRecovery();
         assertTrue(bot.stopLossMarker); // Marker should still be true
     }
+
+
+    @Test
+    void testTimeBasedSelling_OneWeekMinus1Percent() throws Exception {
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now().minusWeeks(1).minusDays(1), 0.50, 0.45, 0, 3, 3));
+
+        // Price dropped exactly -1%
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.495);
+
+        bot.executeTrade();
+
+        // Verify the coin was sold
+        assertFalse(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void testTimeBasedSelling_TwoWeeksMinus2Percent() throws Exception {
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now().minusWeeks(2).minusDays(1), 0.50, 0.45, 0, 3, 3));
+
+        // Price dropped exactly -2%
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.49);
+
+        bot.executeTrade();
+
+        // Verify the coin was sold
+        assertFalse(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void testTimeBasedSelling_FiveWeeksMinus5Percent() throws Exception {
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now().minusWeeks(5).minusDays(1), 0.50, 0.45, 0, 3, 3));
+
+        // Price dropped exactly -5%
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.475);
+
+        bot.executeTrade();
+
+        // Verify the coin was sold
+        assertFalse(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void testTimeBasedSelling_NotTriggeredEarly() throws Exception {
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now().minusWeeks(3).minusDays(1), 0.50, 0.45, 0, 3, 3));
+
+        // Price has only dropped 1.5% (should not sell yet)
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.4925);
+
+        bot.executeTrade();
+
+        // Verify the coin was not sold
+        assertTrue(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void testTimeBasedSelling_ExactlyOnBoundary() throws Exception {
+        purchaseHistoryMock.put("TEST", new TradeInfo(
+                0.50, 100, LocalDateTime.now().minusWeeks(4).minusDays(1), 0.50, 0.45, 0, 3, 3));
+
+        // Price dropped exactly -4%
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.48);
+
+        bot.executeTrade();
+
+        // Verify the coin was sold
+        assertFalse(purchaseHistoryMock.containsKey("TEST"));
+    }
+
+    @Test
+    void testStopTrading() throws Exception {
+        bot.startTrading();
+        bot.stopTrading();
+        assertTrue(bot.scheduler.isShutdown());
+    }
+
 
     @Test
     void testLoadAssetsFileNotExist() throws Exception {

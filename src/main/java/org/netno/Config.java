@@ -18,6 +18,7 @@ public class Config {
     String logLevel;
     double trailingStopLossPercent;
     List<Double> profitLevels;
+    List<Double> negativeProfitLevels;
     List<Double> averageDownSteps;
     int minimumProfitLevelForRegularSale;
     int profitLevelForRecoverySale;
@@ -42,6 +43,9 @@ public class Config {
         config.logLevel = json.getString("logLevel").toUpperCase();
         config.trailingStopLossPercent = json.getDouble("trailingStopLossPercent");
         config.profitLevels = json.getJSONArray("profitLevels").toList().stream()
+                .map(obj -> Double.valueOf(obj.toString()))
+                .collect(Collectors.toList());
+        config.negativeProfitLevels = json.getJSONArray("negativeProfitLevels").toList().stream()
                 .map(obj -> Double.valueOf(obj.toString()))
                 .collect(Collectors.toList());
         config.averageDownSteps = json.getJSONArray("averageDownSteps").toList().stream()
