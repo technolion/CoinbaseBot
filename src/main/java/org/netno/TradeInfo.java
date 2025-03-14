@@ -2,6 +2,7 @@ package org.netno;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -89,6 +90,7 @@ public class TradeInfo {
         this.decimalPlaces = places;
     }
 
+    @JsonIgnore
     public long getWeeks() {
         return ChronoUnit.WEEKS.between(this.purchaseDate, LocalDateTime.now());
     }
