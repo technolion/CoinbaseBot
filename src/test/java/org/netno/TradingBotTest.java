@@ -408,8 +408,8 @@ class TradingBotTest {
         purchaseHistoryMock.put("TEST", new TradeInfo(
                 0.50, 100, LocalDateTime.now().minusWeeks(3).minusDays(1), 0.50, 0.45, 0, 3, 3));
 
-        // Price has only dropped 1.5% (should not sell yet)
-        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.4925);
+        // Price has dropped 3.5% and we have the coin since 3 weeks. Should not sell
+        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.4825);
 
         bot.executeTrade();
 

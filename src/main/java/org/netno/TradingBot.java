@@ -270,7 +270,7 @@ public class TradingBot {
                 if (priceDifference < 0 && weeksHeld > 0) {
                     int thresholdIndex = (int) Math.min(weeksHeld, config.negativeProfitLevels.size());
     
-                    if (priceDifference <= -config.negativeProfitLevels.get(thresholdIndex-1)) {
+                    if (round(priceDifference,1) >= round(-config.negativeProfitLevels.get(thresholdIndex-1),1)) {
                         log("INFO", String.format(
                                 "Selling %s after %d weeks below purchase price (Current: %.6f, Threshold: %.2f%%)",
                                 coin, weeksHeld, currentPrice, config.negativeProfitLevels.get(thresholdIndex-1)));
@@ -583,5 +583,10 @@ public class TradingBot {
             this.currentPrice = currentPrice;
             this.priceChangePercentage = priceChangePercentage;
         }
+    }
+
+    private static double round (double value, int precision) {
+        int scale = (int) Math.pow(10, precision);
+        return (double) Math.round(value * scale) / scale;
     }
 }
