@@ -62,12 +62,12 @@
         <dependency>
             <groupId>com.coinbase.core</groupId>
             <artifactId>coinbase-core-java</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
         <dependency>
             <groupId>com.coinbase.advanced</groupId>
             <artifactId>coinbase-advanced-sdk-java</artifactId>
-            <version>0.1.0</version>
+            <version>0.2.0</version>
         </dependency>
     </dependencies>
 

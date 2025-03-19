@@ -20,7 +20,11 @@ The following rules apply:
 * If a coin has been averaged down on the last available step and then reaches the configurable recovery profit level (`profitLevelForRecoverySale`, e.g. 1), then a recovery sale is initiated to free funds and lower risk.
 * The bot records reached profit levels per held coin. These levels are configurable (`profitLevels`)
 * If the market price of a held coin drops below the previous profit level and if this level is equal or higher than the configurable minimum profit level (`minimumProfitLevelForRegularSale`), the bot sells the coin, cashing in the profit.
-* If a stop loss sale is done, the bot halts any new purchases until the whole market recovers (the average price increase over 24 hours for all configured coins is higher than `marketRecoveryPercent`)
+* If a coin is held longer than a week and the current price is below the average purchase price, the bot sells the coin accepting the following losses:
+  * after 1 week with 1% loss
+  * after 2 weeks with 2% loss
+  * and so on. This can be configured with `negativeProfitLevels`.
+* If a coin underpasses the stop-loss price, the bot halts any new purchases until the whole market recovers (the average price increase over 24 hours for all configured coins is higher than `marketRecoveryPercent`)
 * The bot always uses the average purchase price for a coin, when comparing against market prices. For example
   * A coin was bought for 100 UDSC
   * The market price falls to 97 USDC (3% to the initial purchase price) triggering a second purchase of the same coin (averaging down). The average purchase price is now 98 USDC.
@@ -40,15 +44,16 @@ you need a `config.json` file. I am using these values. Play with them and find 
   "apiSecret": "-----BEGIN EC PRIVATE KEY-----\nxxxyyyzzz\n",
   "portfolioId": "123-456-789",
   "coins": ["BTC", "SOL", "ETH", "XRP", "DOGE", "HBAR", "SUI", "XLM", "ADA", "AVAX", "LINK", "DOT", "BCH", "UNI", "LTC", "NEAR"],
-  "purchaseDropPercent": 3.0,
+  "purchaseDropPercent": 3.5,
   "maxHeldCoins": 4,
-  "useFundsPortionPerTrade": 0.045,
-  "trailingStopLossPercent": 10.0,
-  "profitLevels": [0.0, 1.0, 2.5, 4.0, 5.5, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0],
-  "averageDownSteps": [0.0, 3.0, 5.0, 7.0],
+  "useFundsPortionPerTrade": 0.04,
+  "trailingStopLossPercent": 8.0,
+  "profitLevels": [0.0, 1.5, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0],
+  "negativeProfitLevels": [1.0, 2.0, 3.0, 4.0, 5.0],
+  "averageDownSteps": [0.0, 4.0, 6.0, 8.0],
   "minimumProfitLevelForRegularSale": 2,
   "profitLevelForRecoverySale": 1,
-  "marketRecoveryPercent": 3.0,
+  "marketRecoveryPercent": 4.0,
   "logLevel": "INFO"
 }
 ```
@@ -60,11 +65,11 @@ The currently held assets are stored in a file called `currentAssets.json`.
 
 ## Building and starting
 
-The code uses the advanced-sdk-java from Coinbase's github repository. Unfortunately it is not well maintained so I had to fork the project [here](https://github.com/technolion/advanced-sdk-java). You need to clone that repository, too and build it with 
+The code uses the advanced-sdk-java from Coinbase's github repository. (https://github.com/coinbase-samples/advanced-sdk-java). Since it is not hosted on Maven central you need to clone that repository, too and build it with 
 
 `mvn clean install`
 
-Then witch to the CoinbaseBot repository and build the main project with
+Then switch to the CoinbaseBot repository and build the main project with
 
 `mvn clean install`
 
