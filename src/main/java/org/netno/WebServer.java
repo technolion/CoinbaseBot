@@ -184,6 +184,9 @@ public class WebServer {
                 // Display Current USDC Cash
                 html.append("<div class='cash-info'>");
                 html.append("Current USDC Cash: ").append(String.format("%.2f USDC", tb.usdcBalance));
+                if(tb.getStopLossMarker()) {
+                    html.append("&nbsp; <div class='loss'>Stop-Loss marker active!</div>");
+                }
                 html.append("</div>");
 
                 // Collapsible Profit Levels Section

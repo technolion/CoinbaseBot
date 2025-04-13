@@ -17,7 +17,9 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -80,6 +82,10 @@ public class TradingBot {
 
     public Map<String, TradeInfo> getCurrentAssets() {
         return currentAssets;
+    }
+
+    public boolean getStopLossMarker() {
+        return stopLossMarker;
     }
 
     public MarketDataFetcher getMarketDataFetcher() {
@@ -217,6 +223,8 @@ public class TradingBot {
     public void executeTrade() {
         log("DEBUG", "---- EXECUTING ON HELD COINS ----");
 
+        List<String> coinsToSell = new ArrayList<>();
+
         currentAssets.forEach((coin, tradeInfo) -> {
             try {
                 String tradingPair = coin + "-" + QUOTECURRENCY;
@@ -277,7 +285,7 @@ public class TradingBot {
                         && currentPrice >= recoveryProfitLevelPrice) {
                     log("INFO", String.format("Selling %s at %.6f due to recovery from averaging down.", coin,
                             currentPrice));
-                    sellCoin(coin);
+                    coinsToSell.add(coin);
                     return; // Skip further processing
                 }
 
@@ -290,7 +298,7 @@ public class TradingBot {
                                 "Selling %s after %d weeks below purchase price (Current: %.6f, Threshold: %.2f%%)",
                                 coin, weeksHeld, currentPrice, config.negativeProfitLevels.get(thresholdIndex - 1)));
 
-                        sellCoin(coin);
+                        coinsToSell.add(coin);
                         return; // Skip further processing
                     }
                 }
@@ -312,7 +320,7 @@ public class TradingBot {
                     if (tradeInfo.profitLevelIndex == (config.profitLevels.size() - 1)) {
                         log("INFO", String.format("Selling %s due to max profit level reached. Current: %.6f", coin,
                                 currentPrice));
-                        sellCoin(coin);
+                        coinsToSell.add(coin);
                     } else {
                         log("INFO", String.format("Reached profit level %d (%.2f%%) for %s. Waiting for next level...",
                                 tradeInfo.profitLevelIndex, config.profitLevels.get(tradeInfo.profitLevelIndex), coin));
@@ -344,7 +352,7 @@ public class TradingBot {
                     log("INFO", String.format(
                             "Selling %s due to profit drop. Current: %.6f, Previous Profit level price (%.6f) undercut",
                             coin, currentPrice, previousProfitLevelPrice));
-                    sellCoin(coin);
+                    coinsToSell.add(coin);
 
                     return; // Skip further processing
                 }
@@ -358,6 +366,15 @@ public class TradingBot {
                 e.printStackTrace();
             }
         });
+
+        for (String coin : coinsToSell) {
+            try {
+                sellCoin(coin);
+            } catch (Exception e) {
+                log("ERROR", "Error while selling " + coin + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
     }
 
     void checkMarketRecovery() {
