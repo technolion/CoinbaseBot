@@ -14,7 +14,7 @@ The following rules apply:
 * When a coin is bought a stop loss price is set, depending on a configurable stop loss percentage (`trailingStopLossPercent` e.g. 10%)
 * A configurable portion of the cash currency USDC is being used per initial purchase (`useFundsPortionPerTrade` e.g. 0.045 meaning 4.5%) 
 * The bot buys as many different currency as defined in the configuration (`maxHeldCoins` e.g. 4)
-* The current market price for every coin is checked every 30 seconds
+* The current market price for every coin is checked every 15 seconds
 * If the market price falls below the purchase price the bot tries to average down the purchase price by buying the same amount of the held coin at a lower price. Multiple levels of averaging down stages can be configured (`averageDownSteps`)
 * If the market price rises above the purchase price, the stop loss price is increased (trailing stop loss)
 * If a coin has been averaged down on the last available step and then reaches the configurable recovery profit level (`profitLevelForRecoverySale`, e.g. 1), then a recovery sale is initiated to free funds and lower risk.
