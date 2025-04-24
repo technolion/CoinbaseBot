@@ -117,7 +117,6 @@ public class TradingBot {
     public void startTrading() {
         log("INFO", "Starting trading loop...");
 
-        // Schedule evaluateInitialPurchase every 30 seconds
         scheduler.scheduleAtFixedRate(() -> {
             synchronized (this) { // Ensure only one task modifies state at a time
                 try {
@@ -127,23 +126,23 @@ public class TradingBot {
                     log("ERROR", "Error in evaluateInitialPurchase: " + e.getMessage());
                 }
             }
-        }, 0, 30, TimeUnit.SECONDS); // Initial delay 0, repeat every 30 seconds
+        }, 0, 15, TimeUnit.SECONDS); // Initial delay 0, repeat every 15 seconds
 
-        // Schedule executeTrade every 30 seconds (offset by 15 seconds)
+        // Schedule executeTrade every 10 seconds
         scheduler.scheduleAtFixedRate(() -> {
             synchronized (this) { // Ensure only one task modifies state at a time
                 try {
                     executeTrade();
                 } catch (Exception e) {
                     log("ERROR", "Error in executeTrade: " + e.getMessage());
-                    log("ERROR", "XXX exception: " + e.toString());
+                    log("ERROR", "Exception: " + e.toString());
                     Writer buffer = new StringWriter();
                     PrintWriter pw = new PrintWriter(buffer);
                     e.printStackTrace(pw);
-                    log("ERROR", "XXX Stacktrace: " + buffer.toString());
+                    log("ERROR", "Stacktrace: " + buffer.toString());
                 }
             }
-        }, 15, 30, TimeUnit.SECONDS); // Initial delay 15 seconds, repeat every 30 seconds
+        }, 7, 15, TimeUnit.SECONDS); // Initial delay 7 seconds, repeat every 15 seconds
     }
 
     // Shutdown method to gracefully terminate the executor service
@@ -206,7 +205,7 @@ public class TradingBot {
 
         // If a suitable coin is found, proceed with purchase
         if (bestCoinToBuy != null) {
-            double fundsToSpend = getPurchaseMoney(usdcBalance, config.useFundsPortionPerTrade);
+            double fundsToSpend = getBudgetForNextPurchase(usdcBalance, config.useFundsPortionPerTrade);
             log("INFO", String.format("Buying %s with strongest decline (%.2f%%) for %.6f USDC at %.6f per unit.",
                     bestCoinToBuy.coin, bestCoinToBuy.priceChangePercentage, fundsToSpend, bestCoinToBuy.currentPrice));
             try {
@@ -222,6 +221,9 @@ public class TradingBot {
 
     public void executeTrade() {
         log("DEBUG", "---- EXECUTING ON HELD COINS ----");
+
+        // get the current amount of trade currency (USDC)
+        usdcBalance = marketDataFetcher.getUsdcBalance();
 
         List<String> coinsToSell = new ArrayList<>();
 
@@ -260,9 +262,10 @@ public class TradingBot {
                 if (canAverageDown && currentPrice <= nextAverageDownPrice) {
                     log("INFO", String.format("Averaging down for %s at %.6f.", coin, currentPrice));
 
+                    // if we have enough funds, try buy the same amount again, otherwise use a portion of the remaining funds
                     double fundsToSpend = usdcBalance >= (tradeInfo.amount * currentPrice)
                             ? (tradeInfo.amount * currentPrice)
-                            : getPurchaseMoney(usdcBalance, config.useFundsPortionPerTrade);
+                            : getBudgetForNextPurchase(usdcBalance, config.useFundsPortionPerTrade);
 
                     boolean success = buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
 
@@ -474,7 +477,6 @@ public class TradingBot {
 
             // Save updated assets to file
             saveAssets();
-            usdcBalance = marketDataFetcher.getUsdcBalance();
             log("DEBUG", String.format("Current cash: %s USDC.", usdcBalance));
             return true;
         } else {
@@ -529,13 +531,8 @@ public class TradingBot {
                     exactSize, coin, orderResponse.getSuccessResponse().getOrderId(), profitOrLoss));
 
             // Remove the coin from purchase history
-            log("DEBUG", "XXX trying to remove coin from current assets");
             currentAssets.remove(coin);
-            log("DEBUG", "XXX trying to save current assets");
             saveAssets();
-            log("DEBUG", "XXX trying to fetch current USDC balance");
-            usdcBalance = marketDataFetcher.getUsdcBalance();
-            log("DEBUG", "XXX done");
             return true;
         } else {
             log("ERROR", String.format("Selling %s failed!", coin));
@@ -544,7 +541,8 @@ public class TradingBot {
         }
     }
 
-    double getPurchaseMoney(double funds, double useFundsPortionPerTrade) {
+    // calculates how much USDC we can spend on the next initial purchase
+    double getBudgetForNextPurchase(double funds, double useFundsPortionPerTrade) {
         double portfolioValue = funds + getTotalUsdcValueOfHeldCoins();
         double purchaseMoney = portfolioValue * useFundsPortionPerTrade;
         if (funds < purchaseMoney) {

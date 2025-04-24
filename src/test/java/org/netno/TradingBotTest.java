@@ -339,7 +339,7 @@ class TradingBotTest {
 
         when(marketDataFetcherMock.getUsdcBalance()).thenReturn(700.0);
 
-        double money = bot.getPurchaseMoney(700.0, 0.5);
+        double money = bot.getBudgetForNextPurchase(700.0, 0.5);
         assertEquals(407, money);
     }
 
