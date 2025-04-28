@@ -17,6 +17,9 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -159,6 +162,10 @@ public class TradingBot {
     }
 
     public void evaluateInitialPurchase() {
+        log("DEBUG", "---- FETCHING CURRENT USDC BALANCE ----");
+        // get the current amount of trade currency (USDC)
+        usdcBalance = marketDataFetcher.getUsdcBalance();
+
         log("DEBUG", "---- EVALUATING INITIAL PURCHASE ----");
 
         // Skip evaluation if stop-loss marker is active
@@ -221,9 +228,6 @@ public class TradingBot {
 
     public void executeTrade() {
         log("DEBUG", "---- EXECUTING ON HELD COINS ----");
-
-        // get the current amount of trade currency (USDC)
-        usdcBalance = marketDataFetcher.getUsdcBalance();
 
         List<String> coinsToSell = new ArrayList<>();
 
@@ -590,15 +594,16 @@ public class TradingBot {
 
     void log(String level, String message) {
         try {
+            ZoneId zoneId = ZoneId.of(config.timeZone);
             LogLevel currentLevel = LogLevel.valueOf(level.toUpperCase());
-
+            String timestamp = ZonedDateTime.now(zoneId).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z"));
             // Print log to console
-            System.out.printf("[%s] [%s] %s%n", LocalDateTime.now(), level, message);
+            System.out.printf("[%s] [%s] %s%n", timestamp, level, message);
 
             // Write to file only if log level is met or surpassed
             if (currentLevel.ordinal() >= logLevel.ordinal()) {
                 try (PrintWriter out = new PrintWriter(new FileWriter(LOG_FILE, true))) {
-                    out.printf("[%s] [%s] %s%n", LocalDateTime.now(), level, message);
+                    out.printf("[%s] [%s] %s%n", timestamp, level, message);
                 }
             }
         } catch (Exception e) {

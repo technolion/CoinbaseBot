@@ -16,6 +16,7 @@ public class Config {
     int maxHeldCoins;
     double useFundsPortionPerTrade;
     String logLevel;
+    String timeZone;
     double trailingStopLossPercent;
     List<Double> profitLevels;
     List<Double> negativeProfitLevels;
@@ -41,6 +42,7 @@ public class Config {
         config.maxHeldCoins = json.getInt("maxHeldCoins");
         config.useFundsPortionPerTrade = json.getDouble("useFundsPortionPerTrade");
         config.logLevel = json.getString("logLevel").toUpperCase();
+        config.timeZone = json.has("timeZone") ? json.getString("timeZone") : "UTC";
         config.trailingStopLossPercent = json.getDouble("trailingStopLossPercent");
         config.profitLevels = json.getJSONArray("profitLevels").toList().stream()
                 .map(obj -> Double.valueOf(obj.toString()))

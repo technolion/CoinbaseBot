@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -65,6 +66,8 @@ public class WebServer {
             try {
                 tb.log("DEBUG", "Generating HTML response...");
 
+                ZoneId zoneId = ZoneId.of(tb.config.timeZone);
+
                 html.append("<!DOCTYPE html>");
                 html.append("<html>");
                 html.append("<head>");
@@ -104,9 +107,10 @@ public class WebServer {
                 html.append("</head>");
                 html.append("<body>");
 
-                // Current Date and Time
+                // Current Date and Time (with local timezone)
                 html.append("<div class='datetime'>")
-                        .append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                        .append(java.time.ZonedDateTime.now(zoneId)
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")))
                         .append("</div>");
 
                 // Held Coins Table
@@ -127,7 +131,7 @@ public class WebServer {
                 html.append("<th>Action</th>");
                 html.append("</tr>");
 
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z").withZone(zoneId);
 
                 // **Snapshot of currentAssets to avoid concurrent modification**
                 Map<String, TradeInfo> purchaseHistorySnapshot = new HashMap<>(tb.getCurrentAssets());
@@ -151,7 +155,11 @@ public class WebServer {
 
                     html.append("<tr>");
                     html.append("<td>").append(coin).append("</td>");
-                    html.append("<td>").append(tradeInfo.getPurchaseDate().format(formatter)).append("</td>");
+                    html.append("<td>").append(
+                            tradeInfo.getPurchaseDate()
+                                    .atZone(zoneId)
+                                    .format(formatter)
+                        ).append("</td>");
                     html.append("<td>").append(daysHeld).append("</td>");
                     html.append("<td>")
                             .append(String.format("%.6f", tradeInfo.getPurchasePrice()).replaceAll("\\.?0+$", ""))
