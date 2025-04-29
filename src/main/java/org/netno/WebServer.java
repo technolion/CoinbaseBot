@@ -67,6 +67,7 @@ public class WebServer {
                 tb.log("DEBUG", "Generating HTML response...");
 
                 ZoneId zoneId = ZoneId.of(tb.config.timeZone);
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
 
                 html.append("<!DOCTYPE html>");
                 html.append("<html>");
@@ -109,8 +110,7 @@ public class WebServer {
 
                 // Current Date and Time (with local timezone)
                 html.append("<div class='datetime'>")
-                        .append(java.time.ZonedDateTime.now(zoneId)
-                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")))
+                        .append(java.time.ZonedDateTime.now(zoneId).format(formatter))
                         .append("</div>");
 
                 // Held Coins Table
@@ -131,7 +131,6 @@ public class WebServer {
                 html.append("<th>Action</th>");
                 html.append("</tr>");
 
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z").withZone(zoneId);
 
                 // **Snapshot of currentAssets to avoid concurrent modification**
                 Map<String, TradeInfo> purchaseHistorySnapshot = new HashMap<>(tb.getCurrentAssets());
