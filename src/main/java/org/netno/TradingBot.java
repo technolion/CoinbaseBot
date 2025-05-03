@@ -283,20 +283,7 @@ public class TradingBot {
                     return; // Skip further processing
                 }
 
-                // 🔹 Step 2: Recovery Sale Handling
-                double recoveryProfitLevelPercentage = config.profitLevels.get(config.profitLevelForRecoverySale);
-                double recoveryProfitLevelPrice = tradeInfo.purchasePrice
-                        + (tradeInfo.purchasePrice / 100 * recoveryProfitLevelPercentage);
-
-                if (tradeInfo.averageDownStepIndex == (config.averageDownSteps.size() - 1)
-                        && currentPrice >= recoveryProfitLevelPrice) {
-                    log("INFO", String.format("Selling %s at %.6f due to recovery from averaging down.", coin,
-                            currentPrice));
-                    coinsToSell.add(coin);
-                    return; // Skip further processing
-                }
-
-                // 🔹 Step 3: Time-Based Selling for Negative Profit Levels
+                // 🔹 Step 2: Time-Based Selling for Negative Profit Levels
                 if (priceDifference < 0 && weeksHeld > 0) {
                     int thresholdIndex = (int) Math.min(weeksHeld, config.negativeProfitLevels.size());
 
@@ -310,7 +297,7 @@ public class TradingBot {
                     }
                 }
 
-                // 🔹 Step 4: Regular Profit Level Handling
+                // 🔹 Step 3: Regular Profit Level Handling
                 boolean canIncreaseProfitLevel = false;
                 double nextProfitLevelPrice = Double.MAX_VALUE;
                 if (tradeInfo.profitLevelIndex < (config.profitLevels.size() - 1)) {
@@ -336,7 +323,7 @@ public class TradingBot {
                     return; // Skip further processing
                 }
 
-                // 🔹 Step 5: Stop-Loss or Profit Drop Handling
+                // 🔹 Step 4: Stop-Loss or Profit Drop Handling
                 double previousProfitLevelPrice = 0; // impossible low
                 if (tradeInfo.profitLevelIndex > config.minimumProfitLevelForRegularSale) {
                     // the profit level is higher than the minimum sale level
@@ -364,7 +351,7 @@ public class TradingBot {
                     return; // Skip further processing
                 }
 
-                // 🔹 Step 6: Hold the coin if no condition is met
+                // 🔹 Step 5: Hold the coin if no condition is met
                 log("DEBUG",
                         String.format("Holding %s. Price above stop-loss and profit levels. Skipping SALE.", coin));
 

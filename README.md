@@ -6,7 +6,7 @@ CoinbaseBot is a project which autonomously trades Crypto currency on Coinbase. 
 
 ## Functionality
 
-The bot uses a simple strategy to buy when the market is down, holds the coins, and sells when a certain profit level is reached or when the stop loss price has been underpassed.
+The bot uses a simple strategy to buy when the market is down, holds the coins, and sells when a certain profit level is reached or when the coin is held longer than a week, accepting losses but freeing liquidity.
 
 The following rules apply:
 
@@ -17,12 +17,12 @@ The following rules apply:
 * The current market price for every coin is checked every 15 seconds
 * If the market price falls below the purchase price the bot tries to average down the purchase price by buying the same amount of the held coin at a lower price. Multiple levels of averaging down stages can be configured (`averageDownSteps`)
 * If the market price rises above the purchase price, the stop loss price is increased (trailing stop loss)
-* If a coin has been averaged down on the last available step and then reaches the configurable recovery profit level (`profitLevelForRecoverySale`, e.g. 1), then a recovery sale is initiated to free funds and lower risk.
 * The bot records reached profit levels per held coin. These levels are configurable (`profitLevels`)
 * If the market price of a held coin drops below the previous profit level and if this level is equal or higher than the configurable minimum profit level (`minimumProfitLevelForRegularSale`), the bot sells the coin, cashing in the profit.
 * If a coin is held longer than a week and the current price is below the average purchase price, the bot sells the coin accepting the following losses:
-  * after 1 week with 1% loss
-  * after 2 weeks with 2% loss
+  * after 1 week with 0% profit/loss
+  * after 2 weeks with 1% loss
+  * after 3 weeks with 2% loss
   * and so on. This can be configured with `negativeProfitLevels`.
 * If a coin underpasses the stop-loss price, the bot halts any new purchases until the whole market recovers (the average price increase over 24 hours for all configured coins is higher than `marketRecoveryPercent`)
 * The bot always uses the average purchase price for a coin, when comparing against market prices. For example
@@ -52,9 +52,9 @@ you need a `config.json` file. I am using these values. Play with them and find 
   "negativeProfitLevels": [1.0, 2.0, 3.0, 4.0, 5.0],
   "averageDownSteps": [0.0, 4.0, 6.0, 8.0],
   "minimumProfitLevelForRegularSale": 2,
-  "profitLevelForRecoverySale": 1,
   "marketRecoveryPercent": 4.0,
-  "logLevel": "INFO"
+  "logLevel": "INFO",
+  "timeZone": "Europe/Berlin"
 }
 ```
 
