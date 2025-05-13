@@ -8,6 +8,9 @@ import com.coinbase.advanced.model.orders.CreateOrderRequest;
 import com.coinbase.advanced.model.orders.CreateOrderResponse;
 import com.coinbase.advanced.model.orders.MarketIoc;
 import com.coinbase.advanced.model.orders.OrderConfiguration;
+import com.coinbase.advanced.model.portfolios.GetPortfolioBreakdownRequest;
+import com.coinbase.advanced.model.portfolios.GetPortfolioBreakdownResponse;
+import com.coinbase.advanced.model.portfolios.PortfolioBalances;
 import com.coinbase.advanced.orders.OrdersService;
 
 import java.io.File;
@@ -56,13 +59,13 @@ public class TradingBot {
         this.ordersService = CoinbaseAdvancedServiceFactory.createOrdersService(client);
         this.marketDataFetcher = new MarketDataFetcher(client, config.portfolioId);
         this.config = config;
-        usdcBalance = marketDataFetcher.getUsdcBalance();
         try {
             this.currentAssets = loadAssets();
         } catch (Exception e) {
             return;
         }
         this.logLevel = LogLevel.valueOf(config.logLevel.toUpperCase());
+        getUsdcBalance();
         log("INFO", "TradingBot initialized.");
         log("INFO", String.format("Current cash: %s USDC.", usdcBalance));
         initialized = true;
@@ -75,7 +78,7 @@ public class TradingBot {
         this.ordersService = orderService;
         this.marketDataFetcher = marketDataFetcher;
         this.config = config;
-        usdcBalance = marketDataFetcher.getUsdcBalance();
+        getUsdcBalance();
         this.currentAssets = purchaseHistory;
         this.logLevel = LogLevel.valueOf(config.logLevel.toUpperCase());
         this.stopLossMarker = false;
@@ -164,7 +167,7 @@ public class TradingBot {
     public void evaluateInitialPurchase() {
         log("DEBUG", "---- FETCHING CURRENT USDC BALANCE ----");
         // get the current amount of trade currency (USDC)
-        usdcBalance = marketDataFetcher.getUsdcBalance();
+        getUsdcBalance();
 
         log("DEBUG", "---- EVALUATING INITIAL PURCHASE ----");
 
@@ -577,6 +580,14 @@ public class TradingBot {
             throw new Exception("Error when trying to load existing asset file!");
         }
         return new HashMap<>();
+    }
+
+    public void getUsdcBalance() {
+        double newAmount = marketDataFetcher.getUsdcBalance();
+        if (newAmount != usdcBalance) {
+            log("INFO", String.format("Current cash: %s USDC.", usdcBalance));
+        }
+        usdcBalance = newAmount;
     }
 
     void log(String level, String message) {

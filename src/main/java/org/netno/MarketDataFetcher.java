@@ -73,8 +73,8 @@ public class MarketDataFetcher {
                 .filter(p -> p.getUuid().equalsIgnoreCase(uuid)) // Match by name (case-insensitive)
                 .findFirst(); // Get the first match, if available
 
-         // Return the portfolio or null if not found
-         return result.orElse(null);
+        // Return the portfolio or null if not found
+        return result.orElse(null);
     }
 
     // Fetch precision for base currency size
