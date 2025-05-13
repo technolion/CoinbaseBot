@@ -457,7 +457,7 @@ public class TradingBot {
 
                 // Add new entry to the purchase history
                 currentAssets.put(coin,
-                        new TradeInfo(currentPrice, Double.parseDouble(roundedBaseSize), LocalDateTime.now(),
+                        new TradeInfo(currentPrice, Double.parseDouble(roundedBaseSize), java.time.ZonedDateTime.now(ZoneId.of(config.timeZone)).toLocalDateTime(),
                                 currentPrice,
                                 initialStopLoss,
                                 0,
