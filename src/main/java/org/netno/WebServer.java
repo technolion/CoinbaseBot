@@ -72,7 +72,7 @@ public class WebServer {
                 html.append("<!DOCTYPE html>");
                 html.append("<html>");
                 html.append("<head>");
-                html.append("<meta http-equiv='refresh' content='10'>"); // Auto-refresh every 10 seconds
+                html.append("<meta http-equiv='refresh' content='5'>"); // Auto-refresh every 10 seconds
                 html.append("<title>CoinbaseBot</title>");
                 html.append("<style>");
                 html.append("body { font-family: Arial, sans-serif; margin: 0; padding: 0; }");
@@ -143,14 +143,11 @@ public class WebServer {
                     }
 
                     double currentValue = currentPrice * tradeInfo.getAmount();
-                    double winLossPercent = ((currentPrice - tradeInfo.getPurchasePrice())
-                            / tradeInfo.getPurchasePrice()) * 100;
-                    double winLossUSDC = currentValue - (tradeInfo.getAmount() * tradeInfo.getPurchasePrice());
+                    double winLossUSDC = tradeInfo.getWinLoss(currentPrice, tb.config.takerFeePercentage);
+                    double winLossPercent = winLossUSDC / tradeInfo.getInvest() * 100;
                     long daysHeld = ChronoUnit.DAYS.between(tradeInfo.getPurchaseDate(), LocalDateTime.now());
-                    String profitLevel = String.format("%d (%.2f%%)", tradeInfo.getProfitLevelIndex(),
-                            tb.config.profitLevels.get(tradeInfo.getProfitLevelIndex()));
-                    String averageDownStep = String.format("%d (%.2f%%)", tradeInfo.getAverageDownStepIndex(),
-                            tb.config.averageDownSteps.get(tradeInfo.getAverageDownStepIndex()));
+                    String profitLevel = String.format("%d", tradeInfo.getProfitLevelIndex());
+                    String averageDownStep = String.format("%d", tradeInfo.getAverageDownStepIndex());
 
                     html.append("<tr>");
                     html.append("<td>").append(coin).append("</td>");
@@ -194,18 +191,6 @@ public class WebServer {
                 if(tb.getStopLossMarker()) {
                     html.append("&nbsp; <div class='loss'>Stop-Loss marker active!</div>");
                 }
-                html.append("</div>");
-
-                // Collapsible Profit Levels Section
-                html.append("<button class='collapsible'>Profit Levels</button>");
-                html.append("<div class='content'>");
-                tb.config.profitLevels.forEach(level -> html.append("<p>Level ").append(level).append("%</p>"));
-                html.append("</div>");
-
-                // Collapsible Average Down Steps Section
-                html.append("<button class='collapsible'>Average Down Levels</button>");
-                html.append("<div class='content'>");
-                tb.config.averageDownSteps.forEach(step -> html.append("<p>Step ").append(step).append("%</p>"));
                 html.append("</div>");
 
                 html.append("</body>");

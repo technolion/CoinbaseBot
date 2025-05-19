@@ -16,9 +16,10 @@ public class TradeInfo {
     LocalDateTime purchaseDate; // Date of purchase
     double highestPrice; // Highest price observed
     double trailingStopLoss; // Current trailing stop-loss price
+    double purchaseFee; // Highest price observed
     int profitLevelIndex; // Index of the last reached profit level
     int averageDownStepIndex; // Index of the last reached average down step
-    int decimalPlaces; //number of places after the decimal point for the coin
+    int decimalPlaces; // number of places after the decimal point for the coin
 
     // Constructor with parameters for JSON deserialization
     @JsonCreator
@@ -28,17 +29,19 @@ public class TradeInfo {
             @JsonProperty("purchaseDate") LocalDateTime purchaseDate,
             @JsonProperty("highestPrice") double highestPrice,
             @JsonProperty("trailingStopLoss") double trailingStopLoss,
+            @JsonProperty("purchaseFee") double purchaseFee,
             @JsonProperty("profitLevelIndex") int profitLevelIndex,
-            @JsonProperty("averageDownStepIndex") Integer averageDownStepIndex,
-            @JsonProperty("decimalPlaces") Integer decimalPlaces) {
+            @JsonProperty("averageDownStepIndex") int averageDownStepIndex,
+            @JsonProperty("decimalPlaces") int decimalPlaces) {
         this.purchasePrice = purchasePrice;
         this.amount = amount;
         this.purchaseDate = purchaseDate;
         this.highestPrice = highestPrice;
         this.trailingStopLoss = trailingStopLoss;
+        this.purchaseFee = purchaseFee;
         this.profitLevelIndex = profitLevelIndex;
-        this.averageDownStepIndex = (averageDownStepIndex != null) ? averageDownStepIndex : 0;
-        this.decimalPlaces = (decimalPlaces != null) ? decimalPlaces : 99;
+        this.averageDownStepIndex = averageDownStepIndex;
+        this.decimalPlaces = decimalPlaces;
     }
 
     // Getter methods
@@ -64,6 +67,14 @@ public class TradeInfo {
 
     public void setTrailingStopLoss(double newStopLoss) {
         this.trailingStopLoss = newStopLoss;
+    }
+
+    public double getPurchaseFee() {
+        return purchaseFee;
+    }
+
+    public void setPurchaseFee(double newPurchaseFee) {
+        this.purchaseFee = newPurchaseFee;
     }
 
     public int getProfitLevelIndex() {
@@ -95,13 +106,30 @@ public class TradeInfo {
         return ChronoUnit.WEEKS.between(this.purchaseDate, LocalDateTime.now());
     }
 
+    @JsonIgnore
+    public double getInvest() {
+        return amount * purchasePrice;
+    }
+
+    @JsonIgnore
+    public double getWinLoss(double currentPrice, double takerFeePercentage) {
+        double currentValue = currentPrice * amount;
+        double winLoss =  currentValue
+                - (amount * purchasePrice)  //what we initially paid
+                - purchaseFee               // purchase fee when buying
+                - calculateTakerFee(currentValue, takerFeePercentage);  // purchase fee when selling
+        return winLoss;
+    }
+
     // Update purchase info for averaging down
-    public void updatePurchase(double newPrice, double additionalAmount) {
+    public void updatePurchase(double newPrice, double additionalAmount, double takerFeePercentage) {
         double totalValue = (purchasePrice * amount) + (newPrice * additionalAmount);
         amount += additionalAmount;
         String newAveragePrice = BigDecimal.valueOf(totalValue / amount)
                 .setScale(6, RoundingMode.HALF_DOWN).toString();
         purchasePrice = Double.parseDouble(newAveragePrice);
+
+        purchaseFee += calculateTakerFee(newPrice * additionalAmount, takerFeePercentage);
     }
 
     public void increaseAverageDown() {
@@ -121,6 +149,17 @@ public class TradeInfo {
                     .setScale(6, RoundingMode.HALF_DOWN).toString();
             trailingStopLoss = Double.parseDouble(newTrailingStopLoss);
         }
+    }
+
+    private double calculateTakerFee(double value, double takerFeePercentage) {
+        // calculate the purchase fee
+        double fee = value * takerFeePercentage / 100.0;
+        // round the purchase fee to 2 digits after the comma
+        String roundedPurchaseFee = BigDecimal.valueOf(fee)
+                .setScale(2, RoundingMode.HALF_DOWN)
+                .toPlainString();
+
+        return (Double.parseDouble(roundedPurchaseFee));
     }
 
 }

@@ -445,7 +445,7 @@ public class TradingBot {
                 TradeInfo tradeInfo = currentAssets.get(coin);
                 if (tradeInfo != null) {
                     // Update purchase price and amount
-                    tradeInfo.updatePurchase(currentPrice, Double.parseDouble(roundedBaseSize));
+                    tradeInfo.updatePurchase(currentPrice, Double.parseDouble(roundedBaseSize), config.takerFeePercentage);
 
                     // Update stop-loss based on the new average purchase price
                     double updatedStopLoss = tradeInfo.getPurchasePrice()
@@ -458,14 +458,27 @@ public class TradingBot {
                 // Calculate the initial stop-loss price
                 double initialStopLoss = currentPrice * (1 - config.trailingStopLossPercent / 100.0);
 
+                //calculate the purchase fee
+                double purchaseFee = currentPrice * Double.parseDouble(roundedBaseSize) * config.takerFeePercentage / 100.0;
+                // round the purchase fee to 2 digits after the comma
+                String roundedPurchaseFee = BigDecimal.valueOf(purchaseFee)
+                        .setScale(2, RoundingMode.HALF_DOWN)
+                        .toPlainString();
+
+
                 // Add new entry to the purchase history
                 currentAssets.put(coin,
-                        new TradeInfo(currentPrice, Double.parseDouble(roundedBaseSize), java.time.ZonedDateTime.now(ZoneId.of(config.timeZone)).toLocalDateTime(),
+                        new TradeInfo(
+                                currentPrice,
+                                Double.parseDouble(roundedBaseSize), 
+                                java.time.ZonedDateTime.now(ZoneId.of(config.timeZone)).toLocalDateTime(),
                                 currentPrice,
                                 initialStopLoss,
+                                Double.parseDouble(roundedPurchaseFee),
                                 0,
                                 0,
-                                decimalPlaces));
+                                decimalPlaces
+                            ));
                 log("INFO", String.format("Initial stop-loss for %s set to %.6f", coin, initialStopLoss));
             }
 
@@ -489,15 +502,12 @@ public class TradingBot {
             return false;
         }
 
-        double amount = tradeInfo.amount;
-        double purchasePrice = tradeInfo.getPurchasePrice();
-
         // Use the exact amount from purchase history without rounding
-        String exactSize = Double.toString(amount);
+        String exactSize = Double.toString(tradeInfo.amount);
 
         // Create the OrderConfiguration using baseSize
-        OrderConfiguration config = new OrderConfiguration();
-        config.setMarketMarketIoc(new MarketIoc.Builder()
+        OrderConfiguration orderConfig = new OrderConfiguration();
+        orderConfig.setMarketMarketIoc(new MarketIoc.Builder()
                 .baseSize(exactSize) // Use exact amount
                 .build());
 
@@ -506,23 +516,19 @@ public class TradingBot {
                 .clientOrderId(LocalDateTime.now().toString())
                 .productId(tradingPair)
                 .side("SELL")
-                .orderConfiguration(config)
+                .orderConfiguration(orderConfig)
                 .build();
 
         // Get the current price for profit/loss calculation
         double currentPrice = marketDataFetcher.getCurrentPrice(tradingPair);
 
-        // Calculate profit or loss in USDC
-        double totalPurchaseValue = amount * purchasePrice;
-        double totalSellValue = amount * currentPrice;
-        double profitOrLoss = totalSellValue - totalPurchaseValue;
 
         // Execute the order
         CreateOrderResponse orderResponse = ordersService.createOrder(orderRequest);
         if (orderResponse.isSuccess()) {
             log("INFO", String.format(
                     "Sold %s coins of %s. Order ID: %s, Profit/Loss: %.2f USDC",
-                    exactSize, coin, orderResponse.getSuccessResponse().getOrderId(), profitOrLoss));
+                    exactSize, coin, orderResponse.getSuccessResponse().getOrderId(), tradeInfo.getWinLoss(currentPrice, config.takerFeePercentage )));
 
             // Remove the coin from purchase history
             currentAssets.remove(coin);
