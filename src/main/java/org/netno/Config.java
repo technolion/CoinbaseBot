@@ -17,12 +17,10 @@ public class Config {
     double useFundsPortionPerTrade;
     String logLevel;
     String timeZone;
-    double trailingStopLossPercent;
     List<Double> profitLevels;
     List<Double> negativeProfitLevels;
     List<Double> averageDownSteps;
     int minimumProfitLevelForRegularSale;
-    double marketRecoveryPercent;
     double takerFeePercentage;
 
     public Config(){};
@@ -43,7 +41,6 @@ public class Config {
         config.useFundsPortionPerTrade = json.getDouble("useFundsPortionPerTrade");
         config.logLevel = json.getString("logLevel").toUpperCase();
         config.timeZone = json.has("timeZone") ? json.getString("timeZone") : "UTC";
-        config.trailingStopLossPercent = json.getDouble("trailingStopLossPercent");
         config.profitLevels = json.getJSONArray("profitLevels").toList().stream()
                 .map(obj -> Double.valueOf(obj.toString()))
                 .collect(Collectors.toList());
@@ -54,7 +51,6 @@ public class Config {
                 .map(val -> Double.parseDouble(val.toString()))
                 .collect(Collectors.toList());
         config.minimumProfitLevelForRegularSale = json.getInt("minimumProfitLevelForRegularSale");
-        config.marketRecoveryPercent = json.getDouble("marketRecoveryPercent");
         config.takerFeePercentage = json.getDouble("takerFeePercentage");
         return config;
     }

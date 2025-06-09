@@ -15,7 +15,6 @@ public class TradeInfo {
     double amount; // Amount of coins held
     LocalDateTime purchaseDate; // Date of purchase
     double highestPrice; // Highest price observed
-    double trailingStopLoss; // Current trailing stop-loss price
     double purchaseFee; // Highest price observed
     int profitLevelIndex; // Index of the last reached profit level
     int averageDownStepIndex; // Index of the last reached average down step
@@ -28,7 +27,6 @@ public class TradeInfo {
             @JsonProperty("amount") double amount,
             @JsonProperty("purchaseDate") LocalDateTime purchaseDate,
             @JsonProperty("highestPrice") double highestPrice,
-            @JsonProperty("trailingStopLoss") double trailingStopLoss,
             @JsonProperty("purchaseFee") double purchaseFee,
             @JsonProperty("profitLevelIndex") int profitLevelIndex,
             @JsonProperty("averageDownStepIndex") int averageDownStepIndex,
@@ -37,7 +35,6 @@ public class TradeInfo {
         this.amount = amount;
         this.purchaseDate = purchaseDate;
         this.highestPrice = highestPrice;
-        this.trailingStopLoss = trailingStopLoss;
         this.purchaseFee = purchaseFee;
         this.profitLevelIndex = profitLevelIndex;
         this.averageDownStepIndex = averageDownStepIndex;
@@ -59,14 +56,6 @@ public class TradeInfo {
 
     public double getHighestPrice() {
         return highestPrice;
-    }
-
-    public double getTrailingStopLoss() {
-        return trailingStopLoss;
-    }
-
-    public void setTrailingStopLoss(double newStopLoss) {
-        this.trailingStopLoss = newStopLoss;
     }
 
     public double getPurchaseFee() {
@@ -138,17 +127,6 @@ public class TradeInfo {
 
     public void increaseProfitLevel() {
         profitLevelIndex++;
-    }
-
-    // Update stop-loss based on current price
-    public void updateStopLoss(double currentPrice, double trailingStopLossPercent) {
-        if (currentPrice > highestPrice) {
-            highestPrice = currentPrice; // Update the highest price seen
-            trailingStopLoss = highestPrice * (1 - trailingStopLossPercent / 100.0); // Adjust stop-loss
-            String newTrailingStopLoss = BigDecimal.valueOf(highestPrice * (1 - trailingStopLossPercent / 100.0))
-                    .setScale(6, RoundingMode.HALF_DOWN).toString();
-            trailingStopLoss = Double.parseDouble(newTrailingStopLoss);
-        }
     }
 
     private double calculateTakerFee(double value, double takerFeePercentage) {

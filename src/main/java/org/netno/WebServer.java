@@ -123,7 +123,6 @@ public class WebServer {
                 html.append("<th>Average<br>Purchase<br>Price</th>");
                 html.append("<th>Current<br>Price</th>");
                 html.append("<th>Current<br>Value<br>(USDC)</th>");
-                html.append("<th>Stop<br>Loss<br>at</th>");
                 html.append("<th>Win/Loss<br>(%)</th>");
                 html.append("<th>Win/Loss<br>(USDC)</th>");
                 html.append("<th>Highest<br>Profit<br>Level</th>");
@@ -163,9 +162,6 @@ public class WebServer {
                     html.append("<td>").append(String.format("%.6f", currentPrice).replaceAll("\\.?0+$", ""))
                             .append("</td>");
                     html.append("<td>").append(String.format("%.2f", currentValue)).append("</td>");
-                    html.append("<td>")
-                            .append(String.format("%.6f", tradeInfo.getTrailingStopLoss()).replaceAll("\\.?0+$", ""))
-                            .append("</td>");
                     html.append("<td class='").append(winLossPercent >= 0 ? "profit" : "loss").append("'>")
                             .append(String.format("%.2f%%", winLossPercent)).append("</td>");
                     html.append("<td class='").append(winLossUSDC >= 0 ? "profit" : "loss").append("'>")
@@ -188,9 +184,6 @@ public class WebServer {
                 // Display Current USDC Cash
                 html.append("<div class='cash-info'>");
                 html.append("Current USDC Cash: ").append(String.format("%.2f USDC", tb.usdcBalance));
-                if(tb.getStopLossMarker()) {
-                    html.append("&nbsp; <div class='loss'>Stop-Loss marker active!</div>");
-                }
                 html.append("</div>");
 
                 html.append("</body>");

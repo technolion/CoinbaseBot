@@ -11,12 +11,10 @@ The bot uses a simple strategy to buy when the market is down, holds the coins, 
 The following rules apply:
 
 * A coin is bought when the current market price is down for a configurable percentage (`purchaseDropPercent` e.g. 3.0 %) compared to 24 hours before
-* When a coin is bought a stop loss price is set, depending on a configurable stop loss percentage (`trailingStopLossPercent` e.g. 10%)
 * A configurable portion of the cash currency USDC is being used per initial purchase (`useFundsPortionPerTrade` e.g. 0.045 meaning 4.5%) 
 * The bot buys as many different currency as defined in the configuration (`maxHeldCoins` e.g. 4)
 * The current market price for every coin is checked every 15 seconds
 * If the market price falls below the purchase price the bot tries to average down the purchase price by buying the same amount of the held coin at a lower price. Multiple levels of averaging down stages can be configured (`averageDownSteps`)
-* If the market price rises above the purchase price, the stop loss price is increased (trailing stop loss)
 * The bot records reached profit levels per held coin. These levels are configurable (`profitLevels`)
 * If the market price of a held coin drops below the previous profit level and if this level is equal or higher than the configurable minimum profit level (`minimumProfitLevelForRegularSale`), the bot sells the coin, cashing in the profit.
 * If a coin is held longer than a week and the current price is below the average purchase price, the bot sells the coin accepting the following losses:
@@ -24,7 +22,6 @@ The following rules apply:
   * after 2 weeks with 1% loss
   * after 3 weeks with 2% loss
   * and so on. This can be configured with `negativeProfitLevels`.
-* If a coin underpasses the stop-loss price, the bot halts any new purchases until the whole market recovers (the average price increase over 24 hours for all configured coins is higher than `marketRecoveryPercent`)
 * The bot always uses the average purchase price for a coin, when comparing against market prices. For example
   * A coin was bought for 100 UDSC
   * The market price falls to 97 USDC (3% to the initial purchase price) triggering a second purchase of the same coin (averaging down). The average purchase price is now 98 USDC.
@@ -47,12 +44,11 @@ you need a `config.json` file. I am using these values. Play with them and find 
   "purchaseDropPercent": 3.5,
   "maxHeldCoins": 4,
   "useFundsPortionPerTrade": 0.04,
-  "trailingStopLossPercent": 8.0,
   "profitLevels": [0.0, 1.5, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0],
   "negativeProfitLevels": [1.0, 2.0, 3.0, 4.0, 5.0],
   "averageDownSteps": [0.0, 4.0, 6.0, 8.0],
   "minimumProfitLevelForRegularSale": 2,
-  "marketRecoveryPercent": 4.0,
+  "takerFeePercentage": 0.4,
   "logLevel": "INFO",
   "timeZone": "Europe/Berlin"
 }
@@ -65,11 +61,7 @@ The currently held assets are stored in a file called `currentAssets.json`.
 
 ## Building and starting
 
-The code uses the advanced-sdk-java from Coinbase's github repository. (https://github.com/coinbase-samples/advanced-sdk-java). Since it is not hosted on Maven central you need to clone that repository, too and build it with 
-
-`mvn clean install`
-
-Then switch to the CoinbaseBot repository and build the main project with
+Switch to the CoinbaseBot repository and build the main project with
 
 `mvn clean install`
 

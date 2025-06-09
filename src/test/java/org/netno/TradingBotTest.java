@@ -32,11 +32,9 @@ class TradingBotTest {
         testConfig.purchaseDropPercent = 5.0;
         testConfig.maxHeldCoins = 5;
         testConfig.useFundsPortionPerTrade = 0.2;
-        testConfig.trailingStopLossPercent = 10.0;
         testConfig.profitLevels = List.of(0.0, 2.0, 5.0, 10.0);
         testConfig.averageDownSteps = List.of(0.0, 2.0, 4.0, 6.0);
         testConfig.minimumProfitLevelForRegularSale = 2;
-        testConfig.marketRecoveryPercent = 3.0;
         testConfig.takerFeePercentage = 0;
         testConfig.negativeProfitLevels = List.of(1.0, 2.0, 3.0, 4.0, 5.0); // -1% to -5%
         testConfig.timeZone = "Europe/Berlin";
@@ -78,7 +76,6 @@ class TradingBotTest {
         assertTrue(purchaseHistoryMock.containsKey("TEST"));
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
         assertEquals(0.50, tradeInfo.getPurchasePrice());
-        assertEquals(tradeInfo.getTrailingStopLoss(), 0.45);
     }
 
     @Test
@@ -110,7 +107,7 @@ class TradingBotTest {
     void testAverageDownNotYetAveragedDown() throws Exception {
         // Add an existing purchase
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.50, 0.45, 0, 0, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.50, 0, 0, 0, 3));
 
         // Simulate price drop to average down
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.489);
@@ -121,29 +118,13 @@ class TradingBotTest {
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
         assertEquals(1, tradeInfo.getAverageDownStepIndex()); // Step index incremented
         assertEquals(tradeInfo.getPurchasePrice(), 0.4945);
-        assertEquals(tradeInfo.getTrailingStopLoss(), 0.44505);
-    }
-
-    @Test
-    void testIncreaseStopLoss() throws Exception {
-        // Add an existing purchase
-        purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.51, 0.45, 0, 0, 0, 3));
-
-        when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.52);
-
-        bot.executeTrade();
-
-        // Verify trailing stop loss has been increased
-        TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
-        assertEquals(0.468, tradeInfo.getTrailingStopLoss());
     }
 
     @Test
     void testAverageDownSecondTime() throws Exception {
         // Add an existing purchase
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.50, 0.4455, 0, 0, 1, 3));
+                0.50, 100, LocalDateTime.now(), 0.50, 0, 0, 1, 3));
 
         // Simulate price drop to average down
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.479);
@@ -154,50 +135,13 @@ class TradingBotTest {
         TradeInfo tradeInfo = purchaseHistoryMock.get("TEST");
         assertEquals(2, tradeInfo.getAverageDownStepIndex()); // Step index incremented
         assertEquals(tradeInfo.getPurchasePrice(), 0.4895);
-        assertEquals(tradeInfo.getTrailingStopLoss(), 0.44055);
-    }
-
-    @Test
-    void testStopLossTriggered() throws Exception {
-        // Add a purchase with stop-loss. Maximum average dow steps are reached
-        purchaseHistoryMock.put("TEST2", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.55, 0.45, 0, 0, 4, 3));
-
-        // Simulate price drop below stop-loss
-        when(marketDataFetcherMock.getCurrentPrice("TEST2-USDC")).thenReturn(0.449);
-
-        bot.executeTrade();
-
-        // Verify the coin was not sold (removed from history)
-        assertTrue(purchaseHistoryMock.containsKey("TEST2"));
-
-        //verify stop loss marker
-        assertTrue(bot.stopLossMarker);
-
-         // Simulate initial buy condition
-         bot.evaluateInitialPurchase();
-
-        // purchase is not done, because stop loss marker is true
-        assertFalse(purchaseHistoryMock.containsKey("TEST"));
-
-        // simulate market recovery
-        when(marketDataFetcherMock.get24hPriceChangePercentage("TEST-USDC")).thenReturn(3.5);
-        bot.checkMarketRecovery();
-
-        // Simulate initial buy condition
-        when(marketDataFetcherMock.get24hPriceChangePercentage("TEST-USDC")).thenReturn(-6.0);
-        bot.evaluateInitialPurchase();
-
-        // purchase is done, because stop loss marker was cleared
-        assertTrue(purchaseHistoryMock.containsKey("TEST"));
-
     }
 
     @Test
     void testProfitLevelReached() throws Exception {
         // Add a purchase with profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.51, 0.45, 0, 0, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.51, 0, 0, 0, 3));
 
         // Simulate price increase to hit profit level
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.51);
@@ -213,7 +157,7 @@ class TradingBotTest {
     void testHighestProfitLevelReached() throws Exception {
         // Add a purchase with profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.509, 0.45, 0, 2, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.509, 0, 2, 0, 3));
 
         // Simulate price increase to hit maximum profit level
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.55);
@@ -228,7 +172,7 @@ class TradingBotTest {
     void testProfitDropSale() throws Exception {
         // Add a purchase reaching profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.61, 0.45, 0, 3, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.61, 0, 3, 0, 3));
 
         // Simulate price drop below previously reached profit level
         // we were already at level 3 (10%) but are now below level 2 (5%)
@@ -244,7 +188,7 @@ class TradingBotTest {
     void testProfitDropBelowFirstLevel() throws Exception {
         // Add a purchase reaching profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.61, 0.45, 0, 1, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.61, 0, 1, 0, 3));
 
         // Simulate price drop below previously reached profit level
         // we were already at level 1 (2%) but are now below
@@ -260,7 +204,7 @@ class TradingBotTest {
     void testProfitDropBelowPurchase() throws Exception {
         // Add a purchase reaching profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.501, 0, 0, 0, 3));
 
         // Simulate price drops below purchase price but above stop loss
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.499);
@@ -275,7 +219,7 @@ class TradingBotTest {
     void holdingOnHighestAverageDownStep() throws Exception {
         // Add a purchase reaching profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.501, 0, 0, 0, 3));
 
         // Simulate price drops below purchase price but above stop loss
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.499);
@@ -291,10 +235,10 @@ class TradingBotTest {
     void testGetNumberOfHeldCoins() throws Exception {
         // Add a purchase reaching profit levels
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.501, 0, 0, 0, 3));
         // Add a purchase reaching profit levels
         purchaseHistoryMock.put("TEST2", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.501, 0, 0, 0, 3));
         int heldCoins = bot.getNumberOfHeldCoins();
         assertEquals(2, heldCoins);
     }
@@ -302,9 +246,9 @@ class TradingBotTest {
     @Test
     void testGetPurchaseMoney() throws Exception {
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now(), 0.501, 0.45, 0, 0, 0, 3));
+                0.50, 100, LocalDateTime.now(), 0.501, 0, 0, 0, 3));
         purchaseHistoryMock.put("TEST2", new TradeInfo(
-                    0.80, 80, LocalDateTime.now(), 0.501, 0.45, 0, 0, 0, 3));
+                    0.80, 80, LocalDateTime.now(), 0.501, 0, 0, 0, 3));
 
         when(marketDataFetcherMock.getUsdcBalance()).thenReturn(700.0);
 
@@ -321,19 +265,11 @@ class TradingBotTest {
         // No assertions needed, just ensure no exceptions are thrown
     }
 
-    @Test
-    void testCheckMarketRecoveryNoRecovery() throws Exception {
-        bot.stopLossMarker = true;
-        when(marketDataFetcherMock.get24hPriceChangePercentage("TEST-USDC")).thenReturn(1.0);
-        bot.checkMarketRecovery();
-        assertTrue(bot.stopLossMarker); // Marker should still be true
-    }
-
 
     @Test
     void testTimeBasedSelling_OneWeekMinus1Percent() throws Exception {
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now().minusWeeks(1).minusDays(1), 0.50, 0.45, 0, 0, 3, 3));
+                0.50, 100, LocalDateTime.now().minusWeeks(1).minusDays(1), 0.50, 0, 0, 3, 3));
 
         // Price dropped exactly -1%
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.495);
@@ -347,7 +283,7 @@ class TradingBotTest {
     @Test
     void testTimeBasedSelling_TwoWeeksMinus2Percent() throws Exception {
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now().minusWeeks(2).minusDays(1), 0.50, 0.45, 0, 0, 3, 3));
+                0.50, 100, LocalDateTime.now().minusWeeks(2).minusDays(1), 0.50, 0, 0, 3, 3));
 
         // Price dropped exactly -2%
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.49);
@@ -361,7 +297,7 @@ class TradingBotTest {
     @Test
     void testTimeBasedSelling_FiveWeeksMinus5Percent() throws Exception {
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now().minusWeeks(5).minusDays(1), 0.50, 0.45, 0, 0, 3, 3));
+                0.50, 100, LocalDateTime.now().minusWeeks(5).minusDays(1), 0.50, 0, 0, 3, 3));
 
         // Price dropped exactly -5%
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.475);
@@ -375,7 +311,7 @@ class TradingBotTest {
     @Test
     void testTimeBasedSelling_NotTriggeredEarly() throws Exception {
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now().minusWeeks(3).minusDays(1), 0.50, 0.45, 0, 0, 3, 3));
+                0.50, 100, LocalDateTime.now().minusWeeks(3).minusDays(1), 0.50, 0, 0, 3, 3));
 
         // Price has dropped 3.5% and we have the coin since 3 weeks. Should not sell
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.4825);
@@ -389,7 +325,7 @@ class TradingBotTest {
     @Test
     void testTimeBasedSelling_ExactlyOnBoundary() throws Exception {
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now().minusWeeks(4).minusDays(1), 0.50, 0.45, 0, 0, 3, 3));
+                0.50, 100, LocalDateTime.now().minusWeeks(4).minusDays(1), 0.50, 0, 0, 3, 3));
 
         // Price dropped exactly -4%
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.48);
