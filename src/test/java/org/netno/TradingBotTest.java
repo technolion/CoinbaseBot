@@ -267,9 +267,9 @@ class TradingBotTest {
 
 
     @Test
-    void testTimeBasedSelling_OneWeekMinus1Percent() throws Exception {
+    void testTimeBasedSelling_ThreeWeeksMinus1Percent() throws Exception {
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now().minusWeeks(1).minusDays(1), 0.50, 0, 0, 3, 3));
+                0.50, 100, LocalDateTime.now().minusWeeks(3).minusDays(1), 0.50, 0, 0, 3, 3));
 
         // Price dropped exactly -1%
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.495);
@@ -281,9 +281,9 @@ class TradingBotTest {
     }
 
     @Test
-    void testTimeBasedSelling_TwoWeeksMinus2Percent() throws Exception {
+    void testTimeBasedSelling_FiveWeeksMinus2Percent() throws Exception {
         purchaseHistoryMock.put("TEST", new TradeInfo(
-                0.50, 100, LocalDateTime.now().minusWeeks(2).minusDays(1), 0.50, 0, 0, 3, 3));
+                0.50, 100, LocalDateTime.now().minusWeeks(5).minusDays(1), 0.50, 0, 0, 3, 3));
 
         // Price dropped exactly -2%
         when(marketDataFetcherMock.getCurrentPrice("TEST-USDC")).thenReturn(0.49);

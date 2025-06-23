@@ -17,10 +17,10 @@ The following rules apply:
 * If the market price falls below the purchase price the bot tries to average down the purchase price by buying the same amount of the held coin at a lower price. Multiple levels of averaging down stages can be configured (`averageDownSteps`)
 * The bot records reached profit levels per held coin. These levels are configurable (`profitLevels`)
 * If the market price of a held coin drops below the previous profit level and if this level is equal or higher than the configurable minimum profit level (`minimumProfitLevelForRegularSale`), the bot sells the coin, cashing in the profit.
-* If a coin is held longer than a week and the current price is below the average purchase price, the bot sells the coin accepting the following losses:
-  * after 1 week with 0% profit/loss
-  * after 2 weeks with 1% loss
-  * after 3 weeks with 2% loss
+* If a coin is held longer than three weeks and the current price is below the average purchase price, the bot sells the coin accepting the following losses:
+  * after 3 week with 0% profit/loss
+  * after 4 weeks with 1% loss
+  * after 5 weeks with 2% loss
   * and so on. This can be configured with `negativeProfitLevels`.
 * The bot always uses the average purchase price for a coin, when comparing against market prices. For example
   * A coin was bought for 100 UDSC

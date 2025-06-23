@@ -268,7 +268,7 @@ public class TradingBot {
                 }
 
                 // 🔹 Step 2: Time-Based Selling for Negative Profit Levels
-                if (priceDifference < 0 && weeksHeld > 0) {
+                if (priceDifference < 0 && weeksHeld >= 3) {
                     int thresholdIndex = (int) Math.min(weeksHeld, config.negativeProfitLevels.size());
 
                     if (round(priceDifference, 1) >= round(-config.negativeProfitLevels.get(thresholdIndex - 1), 1)) {
