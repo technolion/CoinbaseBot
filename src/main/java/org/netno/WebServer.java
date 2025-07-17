@@ -81,6 +81,7 @@ public class WebServer {
                 html.append("th { background-color: #f2f2f2; }");
                 html.append(".profit { color: green; }");
                 html.append(".loss { color: red; }");
+                html.append(".neutral { color: black; }");
                 html.append(".cash-info { text-align: center; font-size: 18px; margin-top: 20px; }");
                 html.append(".datetime { position: absolute; top: 10px; left: 10px; font-size: 12px; color: gray; }");
                 html.append(
@@ -121,11 +122,11 @@ public class WebServer {
                 html.append("<th>Purchase<br>Date</th>");
                 html.append("<th>Days<br>Held</th>");
                 html.append("<th>Average<br>Purchase<br>Price</th>");
+                html.append("<th>Highest<br>Price</th>");
                 html.append("<th>Current<br>Price</th>");
                 html.append("<th>Current<br>Value<br>(USDC)</th>");
                 html.append("<th>Win/Loss<br>(%)</th>");
                 html.append("<th>Win/Loss<br>(USDC)</th>");
-                html.append("<th>Highest<br>Profit<br>Level</th>");
                 html.append("<th>Average<br>Down<br>Steps</th>");
                 html.append("<th>Action</th>");
                 html.append("</tr>");
@@ -142,10 +143,11 @@ public class WebServer {
                     }
 
                     double currentValue = currentPrice * tradeInfo.getAmount();
-                    double winLossUSDC = tradeInfo.getWinLoss(currentPrice, tb.config.takerFeePercentage);
+                    double winLossUSDC = tradeInfo.getWinLossIncludingFees(currentPrice, tb.config.takerFeePercentage);
                     double winLossPercent = winLossUSDC / tradeInfo.getInvest() * 100;
+                    double definiteSellBarrierPrice = tradeInfo.getPurchasePrice() + tradeInfo.getPurchasePrice()/100*(tb.config.minimumProfitPercentage+tb.config.stopLossSalePercentage);
+                    boolean aboveSellBarrier = currentPrice > definiteSellBarrierPrice;
                     long daysHeld = ChronoUnit.DAYS.between(tradeInfo.getPurchaseDate(), LocalDateTime.now());
-                    String profitLevel = String.format("%d", tradeInfo.getProfitLevelIndex());
                     String averageDownStep = String.format("%d", tradeInfo.getAverageDownStepIndex());
 
                     html.append("<tr>");
@@ -159,15 +161,16 @@ public class WebServer {
                     html.append("<td>")
                             .append(String.format("%.6f", tradeInfo.getPurchasePrice()).replaceAll("\\.?0+$", ""))
                             .append("</td>");
-                    html.append("<td>").append(String.format("%.6f", currentPrice).replaceAll("\\.?0+$", ""))
+                    html.append("<td>")
+                            .append(String.format("%.6f", tradeInfo.getHighestPrice()).replaceAll("\\.?0+$", ""))
                             .append("</td>");
+                    html.append("<td class='").append(aboveSellBarrier ? "profit" : "neutral").append("'>")
+                            .append(String.format("%.2f USDC", currentPrice).replaceAll("\\.?0+$", "")).append("</td>");
                     html.append("<td>").append(String.format("%.2f", currentValue)).append("</td>");
                     html.append("<td class='").append(winLossPercent >= 0 ? "profit" : "loss").append("'>")
                             .append(String.format("%.2f%%", winLossPercent)).append("</td>");
                     html.append("<td class='").append(winLossUSDC >= 0 ? "profit" : "loss").append("'>")
                             .append(String.format("%.2f USDC", winLossUSDC)).append("</td>");
-                    html.append("<td>").append(tradeInfo.getProfitLevelIndex() > 0 ? profitLevel : "None")
-                            .append("</td>");
                     html.append("<td>").append(tradeInfo.getAverageDownStepIndex() > 0 ? averageDownStep : "None")
                             .append("</td>");
                     html.append("<td>");

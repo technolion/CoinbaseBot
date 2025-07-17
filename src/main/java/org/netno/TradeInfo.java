@@ -16,7 +16,6 @@ public class TradeInfo {
     LocalDateTime purchaseDate; // Date of purchase
     double highestPrice; // Highest price observed
     double purchaseFee; // Highest price observed
-    int profitLevelIndex; // Index of the last reached profit level
     int averageDownStepIndex; // Index of the last reached average down step
     int decimalPlaces; // number of places after the decimal point for the coin
 
@@ -28,7 +27,6 @@ public class TradeInfo {
             @JsonProperty("purchaseDate") LocalDateTime purchaseDate,
             @JsonProperty("highestPrice") double highestPrice,
             @JsonProperty("purchaseFee") double purchaseFee,
-            @JsonProperty("profitLevelIndex") int profitLevelIndex,
             @JsonProperty("averageDownStepIndex") int averageDownStepIndex,
             @JsonProperty("decimalPlaces") int decimalPlaces) {
         this.purchasePrice = purchasePrice;
@@ -36,7 +34,6 @@ public class TradeInfo {
         this.purchaseDate = purchaseDate;
         this.highestPrice = highestPrice;
         this.purchaseFee = purchaseFee;
-        this.profitLevelIndex = profitLevelIndex;
         this.averageDownStepIndex = averageDownStepIndex;
         this.decimalPlaces = decimalPlaces;
     }
@@ -66,14 +63,6 @@ public class TradeInfo {
         this.purchaseFee = newPurchaseFee;
     }
 
-    public int getProfitLevelIndex() {
-        return profitLevelIndex;
-    }
-
-    public void setProfitLevelIndex(int newIndex) {
-        profitLevelIndex = newIndex;
-    }
-
     public int getAverageDownStepIndex() {
         return averageDownStepIndex;
     }
@@ -101,7 +90,7 @@ public class TradeInfo {
     }
 
     @JsonIgnore
-    public double getWinLoss(double currentPrice, double takerFeePercentage) {
+    public double getWinLossIncludingFees(double currentPrice, double takerFeePercentage) {
         double currentValue = currentPrice * amount;
         double winLoss =  currentValue
                 - (amount * purchasePrice)  //what we initially paid
@@ -123,10 +112,6 @@ public class TradeInfo {
 
     public void increaseAverageDown() {
         averageDownStepIndex++;
-    }
-
-    public void increaseProfitLevel() {
-        profitLevelIndex++;
     }
 
     private double calculateTakerFee(double value, double takerFeePercentage) {
