@@ -165,7 +165,7 @@ public class WebServer {
                             .append(String.format("%.6f", tradeInfo.getHighestPrice()).replaceAll("\\.?0+$", ""))
                             .append("</td>");
                     html.append("<td class='").append(aboveSellBarrier ? "profit" : "neutral").append("'>")
-                            .append(String.format("%.2f USDC", currentPrice).replaceAll("\\.?0+$", "")).append("</td>");
+                            .append(String.format("%.6f", currentPrice).replaceAll("\\.?0+$", "")).append("</td>");
                     html.append("<td>").append(String.format("%.2f", currentValue)).append("</td>");
                     html.append("<td class='").append(winLossPercent >= 0 ? "profit" : "loss").append("'>")
                             .append(String.format("%.2f%%", winLossPercent)).append("</td>");
