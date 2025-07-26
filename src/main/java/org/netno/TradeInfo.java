@@ -106,11 +106,10 @@ public class TradeInfo {
         String newAveragePrice = BigDecimal.valueOf(totalValue / amount)
                 .setScale(6, RoundingMode.HALF_DOWN).toString();
         purchasePrice = Double.parseDouble(newAveragePrice);
+        //reset highest price
+        highestPrice = purchasePrice;
 
         purchaseFee += calculateTakerFee(newPrice * additionalAmount, takerFeePercentage);
-    }
-
-    public void increaseAverageDown() {
         averageDownStepIndex++;
     }
 

@@ -262,10 +262,6 @@ public class TradingBot {
                     boolean success = buyCoin(coin, tradingPair, fundsToSpend, currentPrice, true);
 
                     if (success) {
-                        tradeInfo.increaseAverageDown();
-                        //reset highest price to current price
-                        tradeInfo.highestPrice = currentPrice;
-                        saveAssets();
                         log("INFO", String.format("Held coin %s is now at average down step %d.", coin,
                                 tradeInfo.averageDownStepIndex));
                     }
