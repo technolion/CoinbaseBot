@@ -29,7 +29,7 @@ The following rules apply:
   * The market price falls to 92,15 USDC (5% to the average purchase price) triggering a third purchase of the same coin (averaging down). The average purchase price is now 95,075 USDC.
   * The market price rises to 98,878 USDC (4% above the average purchase price).
   * The market price falls to 97,889 UDSC (1% down from highest price but has still 2% profit). The bit sells the coin, because the market price dropped below the configurable stop loss percentage from it's all time high.
-* Coinbase charges a fee for every trade, be it purchase or sale. Normally the bot will use preexisting trade offers on Coinbase when making a transaction, thus the [taker fee](https://help.coinbase.com/en/coinbase/trading-and-funding/advanced-trade/advanced-trade-fees) is used. The fee depends on your trade volume on Coinbase and can be configures (`takerFeePercentage`). The bot's web interface rfrects this in the colums marked "Net Win/Loss".
+* Coinbase charges a fee for every trade, be it purchase or sale. Normally the bot will use preexisting trade offers on Coinbase when making a transaction, thus the [taker fee](https://help.coinbase.com/en/coinbase/trading-and-funding/advanced-trade/advanced-trade-fees) is used. The fee depends on your trade volume on Coinbase and can be configured (`takerFeePercentage`). The bot's web interface reflects this in the colums marked "Net Win/Loss".
 
 ## Configuration
 
