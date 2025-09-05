@@ -6,7 +6,7 @@ CoinbaseBot is a project which autonomously trades Crypto currency on Coinbase. 
 
 ## Functionality
 
-The bot uses a simple strategy to buy when the market is down, holds the coins, and sells when a certain profit level is reached or when the coin is held longer than a week, accepting losses but freeing liquidity.
+The bot uses a simple strategy to buy when the market is down, holds the coins, and sells when a certain profit level is reached or when the coin is held for a longer time, accepting losses but freeing liquidity.
 
 The following rules apply:
 
@@ -16,7 +16,7 @@ The following rules apply:
 * The current market price for every coin is checked every 15 seconds
 * If the market price falls below the purchase price the bot tries to average down the purchase price by buying the same amount of the held coin at a lower price. Multiple levels of averaging down stages can be configured (`averageDownSteps`)
 * The bot records the highest reached price. This price is reset when averaging down.
-* If the current price of a held coin drops from it's highest reached price down below the the configurable stop loss percentage (`stopLossSalePercentage`, but the current price is still above the minimum profit percentage (`minimumProfitPercentage`) the bot sells the coin, cashing in the profit.
+* If the current price of a held coin drops from it's highest reached price down below the configurable stop loss percentage (`stopLossSalePercentage`, but the price is still above the minimum profit percentage (`minimumProfitPercentage`) the bot sells the coin, cashing in the profit.
 * If a coin is held longer than three weeks and the current price is below the average purchase price, the bot sells the coin accepting the following losses:
   * after 3 week with 0% profit/loss
   * after 4 weeks with 1% loss
@@ -29,6 +29,7 @@ The following rules apply:
   * The market price falls to 92,15 USDC (5% to the average purchase price) triggering a third purchase of the same coin (averaging down). The average purchase price is now 95,075 USDC.
   * The market price rises to 98,878 USDC (4% above the average purchase price).
   * The market price falls to 97,889 UDSC (1% down from highest price but has still 2% profit). The bit sells the coin, because the market price dropped below the configurable stop loss percentage from it's all time high.
+* Coinbase charges a fee for every trade, be it purchase or sale. Normally the bot will use preexisting trade offers on Coinbase when making a transaction, thus the [taker fee](https://help.coinbase.com/en/coinbase/trading-and-funding/advanced-trade/advanced-trade-fees) is used. The fee depends on your trade volume on Coinbase and can be configures (`takerFeePercentage`). The bot's web interface rfrects this in the colums marked "Net Win/Loss".
 
 ## Configuration
 
